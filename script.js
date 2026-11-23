@@ -11,13 +11,10 @@ const DB_VERSION = 1;
 const SESSION_KEY = 'ak_admin_session';
 const AUTOSAVE_DELAY_MS = 700;
 
-// İsteğe bağlı global yayın uç noktası (ör. '/api/archive' bağlandığında tüm ziyaretçilerle eşitlenir)
-const GLOBAL_SYNC_ENDPOINT = '';
+const ADMIN_EMAIL = 'akademikkapital@gmail.com';
+const SUPABASE_MODULE_URL = 'https://esm.sh/@supabase/supabase-js@2';
 
-// Giriş bilgileri düz metin olarak tutulmaz; "e-posta:şifre" metninin SHA-256 özeti saklanır.
-const CREDENTIAL_HASH = '15aa02c137009395fd865dfbc5155ed38e82812c0bec5c86c66f28ebd7eeb685';
-
-const MAX_FILE_MB = 2048;
+const MAX_FILE_MB = 50;
 const BACKUP_FILE_LIMIT_MB = 50;
 const LARGE_FILE_MB = 50;
 const FEATURED_COUNT = 8;
@@ -86,10 +83,13 @@ const state = {
 };
 
 let db = null;
+let supabase = null;
+let authRedirectTo = null;
 let useMemory = false;
 let defaultLogo = '';
 let autosaveTimer = null;
 let isAutosaving = false;
+let isRemoteReady = false;
 const mem = { items: new Map(), files: new Map(), settings: new Map() };
 const KEY_PATH = { items: 'id', files: 'id', settings: 'key' };
 
@@ -107,19 +107,120 @@ function trackEvent(eventName, params = {}) {
   } catch (e) { /* analitik hatası akışı durdurmaz */ }
 }
 
-/* ---------- İsteğe Bağlı Global Yayın Senkronizasyonu ---------- */
-async function syncGlobalPublish(action, payload) {
-  if (!GLOBAL_SYNC_ENDPOINT) return { synced: false };
-  try {
-    const res = await fetch(GLOBAL_SYNC_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, payload, at: new Date().toISOString() })
-    });
-    return { synced: res.ok };
-  } catch (e) {
-    return { synced: false };
+/* ---------- Supabase: ortak arşiv, editör girişi ve canlı güncellemeler ---------- */
+async function initializeSupabase() {
+  const configResponse = await fetch('/api/config', { cache: 'no-store' });
+  if (!configResponse.ok) throw new Error('Supabase yapılandırması alınamadı.');
+  const config = await configResponse.json();
+  authRedirectTo = config.redirectTo || `${window.location.origin}/auth/callback`;
+  const { createClient } = await import(SUPABASE_MODULE_URL);
+  supabase = createClient(config.url, config.key, {
+    auth: {
+      storage: window.sessionStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
+  isRemoteReady = true;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  state.isAdmin = session?.user?.email?.toLowerCase() === ADMIN_EMAIL;
+  if (session && !state.isAdmin) await supabase.auth.signOut();
+
+  supabase.auth.onAuthStateChange((_event, sessionState) => {
+    const isAllowed = sessionState?.user?.email?.toLowerCase() === ADMIN_EMAIL;
+    state.isAdmin = isAllowed;
+    if (sessionState && !isAllowed) {
+      void supabase.auth.signOut();
+      return;
+    }
+    updateAdminUI();
+    if (isAllowed) void migrateLocalArchiveIfCloudIsEmpty();
+  });
+
+  supabase.channel('public-archive-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'archive_items' }, () => {
+      void refreshRemoteArchive();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'archive_settings' }, () => {
+      void refreshRemoteSettings();
+    })
+    .subscribe();
+}
+
+async function refreshRemoteArchive() {
+  await loadItems();
+  refreshAll();
+}
+
+async function refreshRemoteSettings() {
+  await Promise.all([loadLogo(), loadSocial()]);
+  renderSocialTargets();
+}
+
+async function migrateLocalArchiveIfCloudIsEmpty() {
+  if (!supabase || !state.isAdmin) return;
+  const { count, error } = await supabase.from('archive_items').select('id', { count: 'exact', head: true });
+  if (error || count !== 0) return;
+  const localItems = await dbAll('items');
+  for (const item of localItems) {
+    if (!item || !TYPES[item.type]) continue;
+    await syncGlobalPublish('upsert_item', item);
   }
+  const localSettings = await dbAll('settings');
+  const social = localSettings.find(setting => setting.key === 'social');
+  const logo = localSettings.find(setting => setting.key === 'logo');
+  if (social) await syncGlobalPublish('social_update', social.value);
+  if (logo && logo.value) await syncGlobalPublish('logo_update', { logo: logo.value });
+  await refreshRemoteArchive();
+  await refreshRemoteSettings();
+}
+
+async function syncItemFiles(item) {
+  const metas = [item.file, item.image, ...(item.images || [])].filter(Boolean);
+  for (const meta of metas) {
+    if (meta.url) continue;
+    const record = await dbGet('files', meta.id);
+    if (!record || !record.blob) continue;
+    const path = `${item.id}/${meta.id}-${encodeURIComponent(meta.name || 'file')}`;
+    const { error } = await supabase.storage.from('archive-files').upload(path, record.blob, {
+      upsert: true,
+      contentType: record.type || 'application/octet-stream'
+    });
+    if (error) throw error;
+    const { data } = supabase.storage.from('archive-files').getPublicUrl(path);
+    meta.url = data.publicUrl;
+  }
+}
+
+async function syncGlobalPublish(action, payload) {
+  if (!supabase) return { synced: false };
+  if (!state.isAdmin) throw new Error('Düzenleme için yetkili editör hesabıyla giriş yapın.');
+
+  let result;
+  if (action === 'upsert_item') {
+    await syncItemFiles(payload);
+    await dbPut('items', payload);
+    result = await supabase.from('archive_items').upsert({
+      id: payload.id,
+      payload,
+      updated_at: new Date().toISOString()
+    });
+  } else if (action === 'delete_item') {
+    result = await supabase.from('archive_items').delete().eq('id', payload.id);
+  } else {
+    const key = action === 'social_update' ? 'social' : 'logo';
+    const value = action === 'social_update' ? payload :
+      action === 'logo_reset' ? { logo: null } : { logo: payload.logo || null };
+    result = await supabase.from('archive_settings').upsert({
+      key,
+      value,
+      updated_at: new Date().toISOString()
+    });
+  }
+  if (result.error) throw result.error;
+  return { synced: true };
 }
 
 /* ==========================================================
@@ -506,8 +607,14 @@ function fillSocialInputs() {
 
 async function loadSocial() {
   try {
-    const rec = await dbGet('settings', 'social');
-    state.social = normalizeSocialMap(rec && rec.value);
+    if (supabase && isRemoteReady) {
+      const { data, error } = await supabase.from('archive_settings').select('value').eq('key', 'social').maybeSingle();
+      if (error) throw error;
+      state.social = normalizeSocialMap(data && data.value);
+    } else {
+      const rec = await dbGet('settings', 'social');
+      state.social = normalizeSocialMap(rec && rec.value);
+    }
   } catch (e) {
     state.social = normalizeSocialMap(null);
   }
@@ -632,6 +739,7 @@ async function sha256Hex(text) {
    Başlangıç verileri (yalnızca ilk açılışta)
    ========================================================== */
 async function seedIfNeeded() {
+  if (isRemoteReady) return;
   const seeded = await dbGet('settings', 'seeded');
   if (seeded) return;
 
@@ -746,6 +854,13 @@ async function seedIfNeeded() {
    Veri yükleme ve görünüm
    ========================================================== */
 async function loadItems() {
+  if (supabase && isRemoteReady) {
+    const { data, error } = await supabase.from('archive_items').select('payload');
+    if (error) throw error;
+    const all = (data || []).map(row => row.payload).filter(Boolean);
+    state.items = all.filter(it => it && TYPES[it.type] && isValidISO(it.date));
+    return;
+  }
   const all = await dbAll('items');
   state.items = all.filter(it => it && TYPES[it.type] && isValidISO(it.date));
 }
@@ -783,6 +898,7 @@ function revokeThumbs() {
 
 async function fillThumb(img, meta) {
   const gen = thumbGen;
+  if (meta.url) { img.src = meta.url; return; }
   try {
     const rec = await dbGet('files', meta.id);
     if (!rec || gen !== thumbGen) return;
@@ -942,10 +1058,7 @@ function renderList() {
   revokeThumbs();
   list.replaceChildren();
   const items = visibleItems();
-  $('#listTitle').textContent = NAV_LABELS[state.filter] || 'Tümü';
   $('#listDesc').textContent = state.filter === 'tumu' ? ALL_DESC : (TYPES[state.filter] ? TYPES[state.filter].desc : '');
-  $('#listCount').textContent = `${items.length} kayıt`;
-  $('#emptyState').hidden = items.length > 0;
 
   let lastKey = null;
   for (const it of items) {
@@ -970,22 +1083,7 @@ function renderView() {
   document.title = (isAbout ? 'Hakkımızda' : NAV_LABELS[state.filter]) + ' — AkademikKapital — Yükseköğretim Arşivi';
   if (!isAbout) { renderYearChips(); renderList(); }
   $('#ctaPublish').hidden = !['tumu', 'makale', 'haberler'].includes(state.filter);
-  updateEdgeNav();
   trackEvent('section_view', { section: state.filter });
-}
-
-function updateEdgeNav() {
-  const i = SECTION_ORDER.indexOf(state.filter);
-  const prev = SECTION_ORDER[i - 1];
-  const next = SECTION_ORDER[i + 1];
-  const set = (btn, key, label) => {
-    btn.disabled = !key;
-    btn.dataset.target = key || '';
-    btn.setAttribute('aria-label', key ? `${label}: ${NAV_LABELS[key]}` : label);
-    btn.title = key ? `${label}: ${NAV_LABELS[key]}` : '';
-  };
-  set($('#edgePrev'), prev, 'Önceki bölüm');
-  set($('#edgeNext'), next, 'Sonraki bölüm');
 }
 
 function applyHash() {
@@ -1032,6 +1130,12 @@ async function loadBodyFigures(it) {
   for (let i = 0; i < list.length; i++) {
     const meta = list[i];
     try {
+      if (meta.url) {
+        out.push(h('figure', { class: 'body-figure' },
+          h('img', { src: meta.url, alt: meta.alt || `${it.title} — görsel ${i + 1}`, loading: 'lazy', decoding: 'async' }),
+          meta.alt ? h('figcaption', {}, meta.alt) : null));
+        continue;
+      }
       const rec = await dbGet('files', meta.id);
       if (!rec) { out.push(null); continue; }
       const url = URL.createObjectURL(rec.blob);
@@ -1053,13 +1157,13 @@ async function loadReaderFigure(it) {
   if (!it.image) return;
   const token = readerFigureToken;
   try {
-    const rec = await dbGet('files', it.image.id);
-    if (!rec || token !== readerFigureToken) return;
-    readerFigureUrl = URL.createObjectURL(rec.blob);
+    const rec = it.image.url ? null : await dbGet('files', it.image.id);
+    if ((!rec && !it.image.url) || token !== readerFigureToken) return;
+    readerFigureUrl = rec ? URL.createObjectURL(rec.blob) : '';
     const alt = it.image.alt || '';
     const img = $('#readerImage');
     img.alt = alt || it.title;
-    img.src = readerFigureUrl;
+    img.src = it.image.url || readerFigureUrl;
     if (alt) { $('#readerCaption').textContent = alt; $('#readerCaption').hidden = false; }
     $('#readerFigure').hidden = false;
   } catch (e) { /* görsel isteğe bağlıdır */ }
@@ -1068,15 +1172,15 @@ async function loadReaderFigure(it) {
 async function downloadFile(it) {
   if (!it.file) return;
   try {
-    const rec = await dbGet('files', it.file.id);
-    if (!rec) { toast('Dosya bulunamadı.'); return; }
-    const url = URL.createObjectURL(rec.blob);
-    const a = h('a', { href: url, download: rec.name || 'dosya' });
+    const rec = it.file.url ? null : await dbGet('files', it.file.id);
+    if (!rec && !it.file.url) { toast('Dosya bulunamadı.'); return; }
+    const url = it.file.url || URL.createObjectURL(rec.blob);
+    const a = h('a', { href: url, download: (rec && rec.name) || it.file.name || 'dosya', target: '_blank', rel: 'noopener noreferrer' });
     document.body.append(a);
     a.click();
     a.remove();
-    trackEvent('file_download', { item_id: it.id, file_name: rec.name });
-    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    trackEvent('file_download', { item_id: it.id, file_name: it.file.name });
+    if (!it.file.url) setTimeout(() => URL.revokeObjectURL(url), 120000);
   } catch (e) {
     toast('Dosya indirilemedi.');
   }
@@ -1177,11 +1281,16 @@ async function openReader(id) {
 let failedAttempts = 0;
 let lockedUntil = 0;
 
-function setSession(on) {
-  try {
-    if (on) sessionStorage.setItem(SESSION_KEY, '1');
-    else sessionStorage.removeItem(SESSION_KEY);
-  } catch (e) { /* bellek içi çalışır */ }
+let authMode = 'login';
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const isSignup = mode === 'signup';
+  $('#loginTitle').textContent = isSignup ? 'Editör hesabı oluştur' : 'Yönetici Girişi';
+  $('#loginForm button[type="submit"]').textContent = isSignup ? 'Hesap Oluştur' : 'Giriş Yap';
+  $('#loginPassword').autocomplete = isSignup ? 'new-password' : 'current-password';
+  $('#authModeToggle').textContent = isSignup ? 'Zaten hesabınız var mı? Giriş yapın' : 'İlk kez mi? Editör hesabı oluşturun';
+  $('#loginError').hidden = true;
 }
 
 function updateAdminUI() {
@@ -1200,40 +1309,58 @@ async function handleLogin(ev) {
   ev.preventDefault();
   $('#loginError').hidden = true;
 
-  const wait = Math.ceil((lockedUntil - Date.now()) / 1000);
-  if (wait > 0) return showLoginError(`Çok fazla hatalı deneme. Lütfen ${wait} saniye sonra tekrar deneyin.`);
-
+  if (!supabase) return showLoginError('Supabase bağlantısı kurulamadı. Sayfayı yenileyip tekrar deneyin.');
   const email = $('#loginEmail').value.trim().toLowerCase();
   const password = $('#loginPassword').value;
   if (!email || !password) return showLoginError('E-posta ve şifre alanlarını doldurun.');
+  if (email !== ADMIN_EMAIL) return showLoginError(`Editör hesabı ${ADMIN_EMAIL} adresiyle sınırlandırılmıştır.`);
+  if (authMode === 'signup' && password.length < 8) return showLoginError('Şifre en az 8 karakter olmalıdır.');
 
-  const digest = await sha256Hex(`${email}:${password}`);
-  if (digest === CREDENTIAL_HASH) {
-    failedAttempts = 0;
-    state.isAdmin = true;
-    setSession(true);
-    $('#loginPassword').value = '';
-    $('#loginDialog').close();
-    updateAdminUI();
-    refreshAll();
-    openAdminPanel();
-  } else {
-    failedAttempts++;
-    if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
-      lockedUntil = Date.now() + LOCK_SECONDS * 1000;
-      failedAttempts = 0;
-      showLoginError(`Çok fazla hatalı deneme. ${LOCK_SECONDS} saniye beklemeniz gerekiyor.`);
-    } else {
-      showLoginError('E-posta veya şifre hatalı.');
+  const result = authMode === 'signup'
+    ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: authRedirectTo } })
+    : await supabase.auth.signInWithPassword({ email, password });
+
+  if (result.error) {
+    const message = (result.error.message || '').toLowerCase();
+    if (message.includes('confirm')) {
+      return showLoginError('E-posta onayı gerekiyor. Gelen kutunuzdaki bağlantıyı kullanıp sonra giriş yapın.');
     }
-    $('#loginPassword').value = '';
+    if (authMode === 'signup' && (message.includes('password') || message.includes('weak'))) {
+      return showLoginError('Daha güçlü, en az 8 karakterli bir şifre seçin.');
+    }
+    if (message.includes('rate') || result.error.status === 429) {
+      return showLoginError('Çok fazla deneme yapıldı. Bir süre bekleyip yeniden deneyin.');
+    }
+    return showLoginError(authMode === 'signup'
+      ? 'Hesap oluşturulamadı. E-posta adresiyle kayıt durumunu kontrol edin veya daha sonra tekrar deneyin.'
+      : 'Giriş başarısız. E-posta ve şifrenizi kontrol edin; gerekiyorsa e-postanızı onaylayın.');
   }
+
+  if (authMode === 'signup' && !result.data.session) {
+    $('#loginPassword').value = '';
+    return showLoginError('Hesap oluşturuldu. E-postanızı onaylayıp giriş yapın.');
+  }
+  const user = result.data.user;
+  if (user?.email?.toLowerCase() !== ADMIN_EMAIL) {
+    await supabase.auth.signOut();
+    return showLoginError('Bu hesap editör yetkisine sahip değil.');
+  }
+
+  failedAttempts = 0;
+  state.isAdmin = true;
+  $('#loginPassword').value = '';
+  $('#loginDialog').close();
+  updateAdminUI();
+  await migrateLocalArchiveIfCloudIsEmpty();
+  await refreshRemoteArchive();
+  await refreshRemoteSettings();
+  openAdminPanel();
 }
 
 function logout() {
   clearTimeout(autosaveTimer);
   state.isAdmin = false;
-  setSession(false);
+  void supabase?.auth.signOut();
   $('#adminDialog').close();
   updateAdminUI();
   refreshAll();
@@ -1779,9 +1906,15 @@ function refreshLogoPreview() {
 
 async function loadLogo() {
   try {
-    const rec = await dbGet('settings', 'logo');
-    if (rec && rec.value) applyLogo(rec.value);
-    else applyLogo(null);
+    if (supabase && isRemoteReady) {
+      const { data, error } = await supabase.from('archive_settings').select('value').eq('key', 'logo').maybeSingle();
+      if (error) throw error;
+      applyLogo(data && data.value && data.value.logo);
+    } else {
+      const rec = await dbGet('settings', 'logo');
+      if (rec && rec.value) applyLogo(rec.value);
+      else applyLogo(null);
+    }
   } catch (e) { applyLogo(null); }
 }
 
@@ -2061,6 +2194,7 @@ function bindEvents() {
     }
   });
   $('#loginForm').addEventListener('submit', handleLogin);
+  $('#authModeToggle').addEventListener('click', () => setAuthMode(authMode === 'login' ? 'signup' : 'login'));
   $('#togglePw').addEventListener('click', () => {
     const inp = $('#loginPassword');
     const show = inp.type === 'password';
@@ -2109,10 +2243,6 @@ function bindEvents() {
   $('#resetImportBtn').addEventListener('click', resetImport);
   $('#sendToFormBtn').addEventListener('click', sendImportToForm);
 
-  ['#edgePrev', '#edgeNext'].forEach(sel => $(sel).addEventListener('click', e => {
-    const key = e.currentTarget.dataset.target;
-    if (key) location.hash = '#' + key;
-  }));
   $('#fImage').addEventListener('change', e => {
     const f = e.target.files[0];
     if (!f) { restoreExistingPreview(); return; }
@@ -2145,8 +2275,6 @@ async function init() {
   $('#maxImgMb').textContent = MAX_IMAGE_MB;
   $('#maxImgMb2').textContent = MAX_IMAGE_MB;
 
-  try { state.isAdmin = sessionStorage.getItem(SESSION_KEY) === '1'; } catch (e) { state.isAdmin = false; }
-
   try {
     db = await openDB();
   } catch (e) {
@@ -2155,14 +2283,19 @@ async function init() {
   }
 
   try {
+    await initializeSupabase();
+  } catch (e) {
+    isRemoteReady = false;
+    toast('Ortak veritabanına bağlanılamadı. İnternet bağlantınızı kontrol edin.');
+  }
+
+  try {
     await seedIfNeeded();
     await loadItems();
     await loadLogo();
     await loadSocial();
   } catch (e) {
-    useMemory = true;
     $('#storageWarning').hidden = false;
-    await seedIfNeeded().catch(() => {});
     await loadItems().catch(() => {});
     renderSocialTargets();
   }
