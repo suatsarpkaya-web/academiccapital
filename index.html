@@ -6,8 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AkademikKapital — Yükseköğretim Arşivi</title>
     <meta name="description"
-        content="Türkiye ve dünyadaki yükseköğretim politikalarını, YÖK ve ÖSYM düzenlemelerini, üniversite verilerini ve akademik kariyer duyurularını bir araya getiren reklamsız dijital yayın arşivi.">
+        content="Türkiye ve dünyadaki yükseköğretim politikalarını, YÖK ve ÖSYM düzenlemelerini, üniversite verilerini ve akademik kariyer duyurularını bir araya getiren dijital yayın arşivi.">
     <meta name="theme-color" content="#142642">
+
+    <!-- Google Tag Manager & gtag -->
+    <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-WHXDFV85"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'GTM-WHXDFV85');
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +29,7 @@
 <body>
     <a class="skip-link" href="#main">İçeriğe geç</a>
 
-    <!-- Simge takımı (sade çizgi simgeler; menüde <use> ile kullanılır) -->
+    <!-- Simge takımı -->
     <svg class="icon-sprite" width="0" height="0" aria-hidden="true" focusable="false">
         <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
         <symbol id="i-article" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h7M9 16h7"/></symbol>
@@ -31,6 +40,7 @@
         <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/></symbol>
     </svg>
 
+    <!-- Sabit Üst Alan: Marka + Sosyal + Giriş + Kategori Menüsü + Sabit Arama/Sıralama -->
     <header class="site-header">
         <div class="header-inner">
             <div class="brand">
@@ -66,6 +76,24 @@
                 <li><a href="#hakkimizda" data-filter="hakkimizda"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="#i-info"/></svg><span>Hakkımızda</span></a></li>
             </ul>
         </nav>
+
+        <!-- Üst kısımda sabit arama ve sıralama çubuğu -->
+        <div class="header-searchbar" role="region" aria-label="Hızlı arama ve sıralama">
+            <div class="header-searchbar-inner">
+                <label class="search">
+                    <span class="sr-only">Arşivde ara</span>
+                    <input id="searchInput" type="search" placeholder="Başlık, özet, metin veya kaynakta ara…"
+                        autocomplete="off">
+                </label>
+                <label class="sort">
+                    <span>Sıralama</span>
+                    <select id="sortSelect">
+                        <option value="desc">Yeniden eskiye</option>
+                        <option value="asc">Eskiden yeniye</option>
+                    </select>
+                </label>
+            </div>
+        </div>
     </header>
 
     <div id="storageWarning" class="storage-warning" role="status" hidden>
@@ -85,7 +113,7 @@
             </div>
             <p id="listDesc" class="section-desc"></p>
 
-            <!-- Ana sayfa: öne çıkanlar / son gelişmeler (yatay kaydırılır) -->
+            <!-- Ana sayfa: öne çıkanlar / son gelişmeler -->
             <section id="featured" class="featured" aria-labelledby="featuredTitle" hidden>
                 <div class="featured-head">
                     <h3 id="featuredTitle">Öne Çıkanlar ve Son Gelişmeler</h3>
@@ -100,21 +128,6 @@
                 <div id="featuredTrack" class="featured-track" role="region"
                     aria-label="En son kayıtlar; yatay kaydırılabilir" tabindex="0"></div>
             </section>
-
-            <div class="toolbar">
-                <label class="search">
-                    <span class="sr-only">Arşivde ara</span>
-                    <input id="searchInput" type="search" placeholder="Başlık, özet, metin veya kaynakta ara…"
-                        autocomplete="off">
-                </label>
-                <label class="sort">
-                    <span>Sıralama</span>
-                    <select id="sortSelect">
-                        <option value="desc">Yeniden eskiye</option>
-                        <option value="asc">Eskiden yeniye</option>
-                    </select>
-                </label>
-            </div>
 
             <div id="yearChips" class="chips" role="group" aria-label="Yıla göre filtrele"></div>
 
@@ -137,10 +150,10 @@
             </div>
             <p class="about-lead">AkademikKapital; Türkiye ve dünyadaki yükseköğretim politikalarını, YÖK ve ÖSYM
                 düzenlemelerini, üniversite verilerini, akademik kariyer duyurularını ve derinlikli araştırma
-                dosyalarını bir araya getiren reklamsız ve sistematik bir dijital yayın arşividir. Yükseköğretim
-                alanındaki mevzuat değişikliklerini, istatistiksel verileri ve küresel politika eğilimlerini birincil
-                kaynaklara dayanarak inceler; karmaşık metinleri akademi mensupları, lisansüstü araştırmacılar ve
-                öğrenciler için anlaşılır, doğrulanmış ve kalıcı bir referans kaynağına dönüştürürüz.</p>
+                dosyalarını bir araya getiren sistematik bir dijital yayın arşividir. Yükseköğretim alanındaki mevzuat
+                değişikliklerini, istatistiksel verileri ve küresel politika eğilimlerini birincil kaynaklara dayanarak
+                inceler; karmaşık metinleri akademi mensupları, lisansüstü araştırmacılar ve öğrenciler için anlaşılır,
+                doğrulanmış ve kalıcı bir referans kaynağına dönüştürürüz.</p>
 
             <h3 class="about-heading">Amaç ve kapsam</h3>
             <p class="about-text">Arşivin amacı, dağınık hâlde yayımlanan yükseköğretim bilgisini tarih sırasıyla,
@@ -159,8 +172,8 @@
                     mevcut kayıtları ortadan kaldırmaz.</li>
                 <li><strong>Olgu ile yorumun ayrılması.</strong> Resmî metne ait bilgiler, editör yorumundan ayrı
                     sunulur.</li>
-                <li><strong>Reklamsız yayın.</strong> Arşivde reklam, sponsorlu yerleşim veya yönlendirmeli içerik
-                    bulunmaz.</li>
+                <li><strong>Editoryal şeffaflık ve doğrulama.</strong> Kayıtlar birincil kaynak, tarih ve bağlam
+                    doğrulamasıyla arşivlenir.</li>
             </ol>
 
             <h3 class="about-heading">Arşiv bölümleri</h3>
@@ -218,7 +231,7 @@
         <div class="footer-inner">
             <section class="footer-block footer-brand" aria-label="Kurum">
                 <p class="footer-title">AKADEMİKKAPİTAL</p>
-                <p class="footer-desc">Yükseköğretim Arşivi · Reklamsız, sistematik dijital yayın arşivi</p>
+                <p class="footer-desc">Yükseköğretim Arşivi · Sistematik dijital yayın arşivi</p>
             </section>
 
             <nav class="footer-block" aria-label="Alt menü">
@@ -306,7 +319,10 @@
     <dialog id="adminDialog" class="dialog dialog-lg" aria-labelledby="adminTitle">
         <div class="dialog-shell">
             <div class="dialog-head">
-                <h2 id="adminTitle">Editör Paneli</h2>
+                <div class="editor-head-status">
+                    <h2 id="adminTitle">Editör Paneli</h2>
+                    <span id="autosaveStatus" class="autosave-badge" aria-live="polite">Otomatik kayıt aktif</span>
+                </div>
                 <div class="head-actions">
                     <button type="button" id="logoutBtn" class="btn btn-small btn-outline">Çıkış Yap</button>
                     <button type="button" class="icon-btn" data-close aria-label="Kapat">×</button>
@@ -449,7 +465,7 @@
 
                         <p id="formError" class="form-error" role="alert" hidden></p>
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Kaydet</button>
+                            <button type="submit" class="btn btn-primary">Tamam — Yayına Al</button>
                             <button type="button" id="cancelForm" class="btn btn-outline">Vazgeç</button>
                         </div>
                     </form>
@@ -460,7 +476,7 @@
                     <h3 class="panel-heading">Dış Yazı Al &amp; Editasyonla Forma Aktar</h3>
                     <p class="muted">Başka bir kaynaktan kopyaladığınız ham metni aşağıya yapıştırın. Araç fazla boşlukları
                         ve boş satırları temizler, başlık, özet ve içerik metnini ayırır; sonucu düzenleyip forma
-                        aktarabilirsiniz. Ardından kategori ve tarihi kontrol edip normal akışla kaydedin.</p>
+                        aktarabilirsiniz. Ardından kategori ve tarihi kontrol edip Tamam — Yayına Al ile yayınlayın.</p>
                     <label class="field">
                         <span>Ham metin</span>
                         <textarea id="rawText" rows="9" placeholder="Metni buraya yapıştırın…"></textarea>
@@ -508,8 +524,8 @@
                         <img id="logoPreview" alt="Mevcut logo" class="brand-logo">
                         <div>
                             <input type="file" id="logoInput" accept="image/*">
-                            <p class="hint">Yüklenen görsel otomatik olarak küçültülür ve başlıkta anında güncellenir.
-                            </p>
+                            <p class="hint">Yüklenen görsel otomatik olarak küçültülür, otomatik kaydedilir ve başlıkta
+                                anında güncellenir.</p>
                             <button type="button" id="logoReset" class="btn btn-small btn-outline">Varsayılan logoya
                                 dön</button>
                         </div>
@@ -517,7 +533,7 @@
 
                     <h3 class="panel-heading">Sosyal Medya Bağlantıları</h3>
                     <p class="muted">Bağlantı girilen platformların ikonları üst başlık ve alt bilgide (“Bizi Takip
-                        Edin”) görünür; boş bırakılanlar gizlenir.</p>
+                        Edin”) görünür; boş bırakılanlar gizlenir. Değişiklikler otomatik kaydedilir.</p>
                     <div class="form-grid">
                         <label class="field">
                             <span>Telegram</span>
@@ -548,8 +564,8 @@
                     <h3 class="panel-heading">Yedekleme</h3>
                     <p class="muted">İçerikler bu tarayıcının depolamasında saklanır. Başka bir cihaza ya da tarayıcıya
                         taşımak veya güvence altına almak için yedek alın. 50 MB’tan büyük dokümanlar yedek dosyasına
-                        eklenmez (kayıtları yedeklenir); bunları Doküman Arşivi’nden ayrıca indirip saklayın. İçe aktarma mevcut kayıtları silmez; yalnızca
-                        eksik kayıtları ekler.</p>
+                        eklenmez; bunları Doküman Arşivi’nden ayrıca indirip saklayın. İçe aktarma mevcut kayıtları
+                        silmez; yalnızca eksik kayıtları ekler.</p>
                     <div class="form-actions">
                         <button type="button" id="exportBtn" class="btn btn-navy">Yedeği İndir (.json)</button>
                         <label class="btn btn-outline file-btn">
