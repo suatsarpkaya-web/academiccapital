@@ -297,6 +297,11 @@ img { max-width: 100%; }
 .btn-danger:hover { background: var(--pencil-red); color: var(--paper); }
 .btn-small { padding: 6px 12px; font-size: 0.8rem; }
 
+.auth-mode-toggle {
+  display: block;
+  margin: 1rem auto 0;
+}
+
 .btn-link {
   background: none; border: 0; padding: 0 4px;
   font-family: var(--font-ui); font-size: 0.8rem;
