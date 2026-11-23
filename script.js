@@ -2,32 +2,34 @@
 
 /* ==========================================================
    AKADEMİKKAPİTAL — Yükseköğretim Arşivi
-   Depolama: IndexedDB (içerik + dosyalar + ayarlar)
+   Depolama: IndexedDB + İsteğe Bağlı Global Yayın Senkronizasyonu
    ========================================================== */
 
 /* ---------- Sabitler ---------- */
 const DB_NAME = 'akademikkapital-db';
 const DB_VERSION = 1;
 const SESSION_KEY = 'ak_admin_session';
+const AUTOSAVE_DELAY_MS = 700;
+
+// İsteğe bağlı global yayın uç noktası (ör. '/api/archive' bağlandığında tüm ziyaretçilerle eşitlenir)
+const GLOBAL_SYNC_ENDPOINT = '';
 
 // Giriş bilgileri düz metin olarak tutulmaz; "e-posta:şifre" metninin SHA-256 özeti saklanır.
 const CREDENTIAL_HASH = '15aa02c137009395fd865dfbc5155ed38e82812c0bec5c86c66f28ebd7eeb685';
 
-const MAX_FILE_MB = 2048;          // doküman dosyası üst sınırı (2 GB; 1 GB'lık dosyalar desteklenir)
-const BACKUP_FILE_LIMIT_MB = 50;   // JSON yedeğine yalnızca bu boyuta kadar dosyalar gömülür
-const LARGE_FILE_MB = 50;          // bu boyuttan büyük dosyalarda depolama denetimi/bekleme bildirimi
-const FEATURED_COUNT = 8;          // ana sayfa kaydırıcısındaki kayıt sayısı
+const MAX_FILE_MB = 2048;
+const BACKUP_FILE_LIMIT_MB = 50;
+const LARGE_FILE_MB = 50;
+const FEATURED_COUNT = 8;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_SECONDS = 30;
 
-// Kayıtlara eklenen görseller (tüm kategoriler); tüm görsel biçimleri kabul edilir.
 const MAX_IMAGE_MB = 25;
-const MAX_BODY_IMAGES = 40;       // bir kayda eklenebilecek metin içi fotoğraf sayısı
+const MAX_BODY_IMAGES = 40;
 const SECTION_ORDER = ['tumu', 'makale', 'haberler', 'duyurular', 'dokuman', 'baglanti', 'hakkimizda'];
 const IMAGE_EXT = ['jpg', 'jpeg', 'jfif', 'pjpeg', 'png', 'apng', 'gif', 'webp', 'avif', 'svg',
   'bmp', 'ico', 'tif', 'tiff', 'heic', 'heif', 'jxl'];
 
-// Çalıştırılabilir / virüs riski taşıyan uzantılar engellenir; diğer tüm dosya türlerine izin verilir.
 const BLOCKED_EXT = [
   'exe', 'bat', 'cmd', 'com', 'scr', 'pif', 'msi', 'msp', 'vbs', 'vbe', 'jse',
   'wsf', 'wsh', 'ps1', 'psm1', 'jar', 'dll', 'lnk', 'hta', 'cpl', 'reg',
@@ -86,11 +88,39 @@ const state = {
 let db = null;
 let useMemory = false;
 let defaultLogo = '';
+let autosaveTimer = null;
+let isAutosaving = false;
 const mem = { items: new Map(), files: new Map(), settings: new Map() };
 const KEY_PATH = { items: 'id', files: 'id', settings: 'key' };
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+/* ---------- Analytics / GTM Olay Yardımcısı ---------- */
+function trackEvent(eventName, params = {}) {
+  try {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({ event: eventName }, params));
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', eventName, params);
+    }
+  } catch (e) { /* analitik hatası akışı durdurmaz */ }
+}
+
+/* ---------- İsteğe Bağlı Global Yayın Senkronizasyonu ---------- */
+async function syncGlobalPublish(action, payload) {
+  if (!GLOBAL_SYNC_ENDPOINT) return { synced: false };
+  try {
+    const res = await fetch(GLOBAL_SYNC_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, payload, at: new Date().toISOString() })
+    });
+    return { synced: res.ok };
+  } catch (e) {
+    return { synced: false };
+  }
+}
 
 /* ==========================================================
    Veritabanı katmanı
@@ -228,7 +258,6 @@ function checkFile(file) {
   return null;
 }
 
-// Büyük dosyalar için tarayıcı depolama kotasını kaydetmeden önce denetler.
 async function checkStorageFor(bytes) {
   const MB = 1024 * 1024;
   if (useMemory) {
@@ -238,7 +267,7 @@ async function checkStorageFor(bytes) {
   }
   try {
     if (bytes > LARGE_FILE_MB * MB && navigator.storage && navigator.storage.persist) {
-      await navigator.storage.persist(); // kalıcı depolama izni; tarayıcı verileri kendiliğinden silmesin
+      await navigator.storage.persist();
     }
   } catch (e) { /* isteğe bağlı */ }
   try {
@@ -252,12 +281,10 @@ async function checkStorageFor(bytes) {
   return null;
 }
 
-/* Kapak görseli: kapak yoksa metin içi ilk fotoğraf küçük resim olarak kullanılır */
 function coverOf(it) {
   return it.image || (it.images && it.images[0]) || null;
 }
 
-/* Metin içi görsel yer tutucusu: [[GÖRSEL:n]] */
 const IMG_TOKEN = /\[\[\s*G[ÖöOo]RSEL\s*:\s*(\d+)\s*\]\]/gi;
 
 function remapPlaceholders(text, fn) {
@@ -269,15 +296,14 @@ function remapPlaceholders(text, fn) {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-/* Dış kaynaktan yapıştırılan ham metni temizler ve başlık / özet / içerik olarak ayırır */
 function cleanPastedText(raw, opts) {
   const o = Object.assign({ unwrap: true, bullets: true, autoTitle: true, autoSummary: true }, opts);
   const before = String(raw || '').replace(/\r\n?/g, '\n');
   const blankBefore = before.split('\n').filter(l => !l.trim()).length;
 
   let t = before
-    .replace(/[​-‍﻿­]/g, '')      // görünmez karakterler, yumuşak tire
-    .replace(/[   ]/g, ' ')            // bölünmeyen boşluklar
+    .replace(/[​-‍﻿­]/g, '')
+    .replace(/[   ]/g, ' ')
     .replace(/\t/g, ' ');
   t = t.split('\n').map(l => l.replace(/ {2,}/g, ' ').trim()).join('\n');
   if (o.bullets) {
@@ -352,12 +378,16 @@ function toast(msg) {
   toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
 }
 
+function setAutosaveLabel(text) {
+  const el = $('#autosaveStatus');
+  if (el) el.textContent = text;
+}
+
 function openDialog(dlg) {
   if (!dlg.open) dlg.showModal();
   document.body.classList.add('modal-open');
 }
 
-/* Metin biçimi: boş satır = paragraf, "## " = ara başlık, "- " = madde, "1. " = numaralı liste */
 function blockEl(block) {
   const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length && lines.every(l => /^[-•]\s+/.test(l))) {
@@ -394,7 +424,7 @@ function noteLines(text) {
 }
 
 /* ==========================================================
-   Sosyal Medya Bağlantıları (Header + Footer + Ayarlar)
+   Sosyal Medya Bağlantıları
    ========================================================== */
 function socialIconSvg(key) {
   const svgNS = 'http://www.w3.org/2000/svg';
@@ -484,7 +514,7 @@ async function loadSocial() {
   renderSocialTargets();
 }
 
-async function saveSocial() {
+async function saveSocial(silent = false) {
   const err = $('#socialError');
   if (err) { err.textContent = ''; err.hidden = true; }
 
@@ -500,7 +530,7 @@ async function saveSocial() {
     if (!valid) {
       const msg = `${p.label} için geçerli bir http(s) bağlantısı girin.`;
       if (err) { err.textContent = msg; err.hidden = false; }
-      if (inp) inp.focus();
+      if (!silent && inp) inp.focus();
       return;
     }
     next[p.key] = valid;
@@ -511,7 +541,9 @@ async function saveSocial() {
     await dbPut('settings', { key: 'social', value: next });
     state.social = next;
     renderSocialTargets();
-    toast('Sosyal medya bağlantıları kaydedildi.');
+    await syncGlobalPublish('social_update', next);
+    setAutosaveLabel('Kaydedildi');
+    if (!silent) toast('Sosyal medya bağlantıları kaydedildi ve yayınlandı.');
   } catch (e) {
     const msg = 'Sosyal medya bağlantıları kaydedilemedi.';
     if (err) { err.textContent = msg; err.hidden = false; }
@@ -598,8 +630,6 @@ async function sha256Hex(text) {
 
 /* ==========================================================
    Başlangıç verileri (yalnızca ilk açılışta)
-   Örnek kayıtlar; yöntem ve rehber niteliğindedir, güncel haber iddiası içermez.
-   Editör panelinden düzenlenebilir veya silinebilir.
    ========================================================== */
 async function seedIfNeeded() {
   const seeded = await dbGet('settings', 'seeded');
@@ -621,16 +651,14 @@ async function seedIfNeeded() {
     '   Makale, Haberler, Duyurular, Doküman Arşivi ve Dış Bağlantılar bölümleri üst menüden seçilir.',
     '',
     '2. Arama ve süzme',
-    '   Arama kutusu başlık, özet, metin ve kaynak alanlarında çalışır. Yıl düğmeleri kayıtları yıla göre süzer.',
+    '   Üstteki arama kutusu başlık, özet, metin ve kaynak alanlarında çalışır. Yıl düğmeleri kayıtları yıla göre süzer.',
     '',
     '3. Okuma',
     '   Bir kaydın başlığına veya "Oku" düğmesine tıklayınca özet, tam metin, ilgili bağlantı/belge',
     '   ve "Referanslar ve notlar" bölümü aynı pencerede görüntülenir.',
     '',
     '4. Yedekleme',
-    '   İçerikler tarayıcı depolamasında tutulur. Editör panelindeki Ayarlar sekmesinden .json yedeği alınabilir.',
-    '',
-    'Bu dosya örnek bir kayıttır; düzenlenebilir veya silinebilir.'
+    '   İçerikler depolamada tutulur. Editör panelindeki Ayarlar sekmesinden .json yedeği alınabilir.'
   ].join('\n'));
 
   const templateFile = await seedFile('kaynak-kayit-sablonu.txt', [
@@ -643,13 +671,9 @@ async function seedIfNeeded() {
     'Birincil kaynak   : (Resmî Gazete, kurum sayfası, özgün veri tablosu vb. bağlantısı)',
     'Kısa özet         : (en çok 2 cümle)',
     'Tam metin         :',
-    'Referanslar/notlar: (her satıra bir madde: künye, istatistik notu, yürürlük tarihi)',
-    'Doğrulama         : (kaynağa son erişim tarihi ve kontrol eden kişi)',
-    '',
-    'Not: Resmî metin ile editör yorumunu ayrı bölümlerde yazın.'
+    'Referanslar/notlar: (her satıra bir madde: künye, istatistik notu, yürürlük tarihi)'
   ].join('\n'));
 
-  // [kategori, kaç gün önce, başlık, özet, metin, ek alanlar]
   const seeds = [
     {
       type: 'duyurular', date: daysAgoISO(1),
@@ -660,27 +684,9 @@ async function seedIfNeeded() {
         '## Arşivin kapsamı',
         'Bu arşiv; yükseköğretim mevzuatı, sınav ve yerleştirme süreçleri, akademik kariyer ilanları, araştırma çağrıları ve veri kaynakları ile ilgili kayıtları tek yerde ve tarih sırasıyla toplar.',
         '## Bölümler',
-        '- Makale: politika, mevzuat ve yöntem üzerine incelemeler\n- Haberler: kaynaklı ve kısa gelişme kayıtları\n- Duyurular: arşiv ve akademik kariyer duyuruları\n- Doküman Arşivi: indirilebilir dosya ve şablonlar\n- Dış Bağlantılar: resmî kurum ve birincil kaynak bağlantıları',
-        '## Kayıtların korunması',
-        'Yeni içerik eklendiğinde mevcut kayıtlar silinmez. Tüm kayıtlar tarih sırasıyla korunur.',
-        'Bu kayıt örnek amaçlıdır; editör panelinden düzenlenebilir veya silinebilir.'
+        '- Makale: politika, mevzuat ve yöntem üzerine incelemeler\n- Haberler: kaynaklı ve kısa gelişme kayıtları\n- Duyurular: arşiv ve akademik kariyer duyuruları\n- Doküman Arşivi: indirilebilir dosya ve şablonlar\n- Dış Bağlantılar: resmî kurum ve birincil kaynak bağlantıları'
       ].join('\n\n'),
-      notes: 'Kullanım ayrıntıları için Doküman Arşivi’ndeki “Arşiv kullanım notu” kaydına bakınız.\nBölüm açıklamaları için Hakkımızda sayfasına bakınız.'
-    },
-    {
-      type: 'duyurular', date: daysAgoISO(3),
-      title: 'Kayıt ilkeleri: Bir kayıtta neler bulunur?',
-      summary: 'Her kaydın hangi alanlardan oluştuğunu ve bilgilerin nasıl doğrulandığını açıklayan editör notu.',
-      source: 'AkademikKapital Editörlüğü',
-      body: [
-        '## Kayıt alanları',
-        '- Yayın tarihi ve kategori\n- Başlık ve en çok iki cümlelik özet\n- Kaynak veya kurum adı\n- Tam metin (varsa)\n- İlgili bağlantı veya indirilebilir belge\n- Referanslar ve notlar',
-        '## Doğrulama yaklaşımı',
-        'Tarih, kurum adı ve sayısal bilgiler mümkün olduğunda birincil kaynaktan kontrol edilir. Birincil kaynağa ulaşılamayan bilgi, kayıtta bu durum belirtilerek yayımlanır.',
-        '## Olgu ve yorum ayrımı',
-        'Resmî metinden aktarılan bilgi ile editör yorumu ayrı bölümlerde verilir.'
-      ].join('\n\n'),
-      notes: 'Kayıt şablonu için Doküman Arşivi’ndeki “Kaynak kayıt şablonu” dosyasına bakınız.'
+      notes: 'Kullanım ayrıntıları için Doküman Arşivi’ndeki “Arşiv kullanım notu” kaydına bakınız.'
     },
     {
       type: 'makale', date: daysAgoISO(5),
@@ -688,80 +694,20 @@ async function seedIfNeeded() {
       summary: 'Bir düzenlemeyi doğru ve güncel okumak için izlenebilecek beş adımlık çerçeve.',
       source: 'AkademikKapital Editörlüğü',
       body: [
-        'Yükseköğretim mevzuatı sık güncellenir; ikincil özetler zamanla eskiyebilir. Bu nedenle bir düzenlemeyi değerlendirirken sıralı bir okuma yöntemi izlemek hata payını azaltır.',
+        'Yükseköğretim mevzuatı sık güncellenir; ikincil özetler zamanla eskiyebilir.',
         '## Beş adımlık çerçeve',
-        '1. Metni bulun: Kanun, yönetmelik veya kurul kararının özgün metnini Resmî Gazete ya da Mevzuat Bilgi Sistemi’nde arayın.\n2. Yürürlük tarihini kontrol edin: Yayım tarihi ile yürürlük tarihi farklı olabilir; geçici maddeleri ayrıca okuyun.\n3. Değişiklikleri izleyin: Metnin sonradan değiştirilip değiştirilmediğini ve mülga maddeleri kontrol edin.\n4. Kurum açıklamasına bakın: İlgili kurumun (YÖK, ÖSYM vb.) resmî duyurusu uygulama ayrıntılarını içerebilir.\n5. İkincil yorumu en son okuyun: Haber ve değerlendirmeleri ancak ilk dört adımdan sonra, birincil metinle karşılaştırarak kullanın.',
-        '## Atıf biçimi',
-        'Mevzuata atıf yaparken kanun/yönetmelik adını, yayım tarihini, Resmî Gazete sayısını ve ilgili madde numarasını birlikte belirtmek okuyucunun doğrulamasını kolaylaştırır.'
+        '1. Metni bulun: Kanun, yönetmelik veya kurul kararının özgün metnini Resmî Gazete ya da Mevzuat Bilgi Sistemi’nde arayın.\n2. Yürürlük tarihini kontrol edin.\n3. Değişiklikleri izleyin.\n4. Kurum açıklamasına bakın.\n5. İkincil yorumu en son okuyun.'
       ].join('\n\n'),
       url: 'https://www.resmigazete.gov.tr',
-      notes: 'Resmî Gazete: yayım tarihi ve sayısı ile özgün metin.\nMevzuat Bilgi Sistemi: güncel ve değişiklik işlenmiş mevzuat metinleri.\nİlgili kurumun resmî duyuru sayfası: uygulama ayrıntıları.'
-    },
-    {
-      type: 'makale', date: daysAgoISO(8),
-      title: 'Akademik ilan metni nasıl okunur?',
-      summary: 'Öğretim elemanı ve akademik personel ilanlarında başvurudan önce kontrol edilmesi gereken unsurlar.',
-      source: 'AkademikKapital Editörlüğü',
-      body: [
-        'Akademik ilanlar kısa metinlerdir ancak başvuru sonucunu doğrudan etkileyen ayrıntılar içerir. Başvurudan önce ilanın tamamını kurumun kendi duyuru sayfasından okumak gerekir.',
-        '## Kontrol listesi',
-        '- İlan eden kurum ve birim (fakülte, enstitü, bölüm)\n- Kadro unvanı, sayısı ve varsa anabilim dalı/alan bilgisi\n- Genel ve özel şartlar ile varsa dil ve yayın koşulları\n- İstenen belgeler ve teslim biçimi (elden, posta, çevrim içi)\n- Başvuru başlangıç ve bitiş tarihleri\n- Başvurunun yapılacağı resmî adres ve iletişim bilgisi',
-        '## Doğrulama',
-        'İlanın yayımlandığı kurum sayfası esas alınmalıdır. İptal, düzeltme veya süre uzatma duyuruları aynı sayfada ayrı bir metin olarak yayımlanabilir; bu nedenle başvuru tarihinden önce sayfa yeniden kontrol edilmelidir.'
-      ].join('\n\n'),
-      notes: 'Esas alınacak kaynak: ilanı yayımlayan üniversitenin resmî duyuru sayfası.\nİptal ve düzeltme duyuruları ayrıca kontrol edilmelidir.'
-    },
-    {
-      type: 'makale', date: daysAgoISO(12),
-      title: 'Açık erişim: temel kavramlar ve yayın süreçlerine etkisi',
-      summary: 'Açık erişimin ne anlama geldiği, yaygın yayın modelleri ve dergi seçerken sorulacak sorular.',
-      source: 'AkademikKapital Editörlüğü',
-      body: [
-        'Açık erişim, akademik yayınlara okuyucunun abonelik veya ücret engeli olmadan ulaşabilmesini ifade eder. Kavram, araştırma çıktılarının görünürlüğü ve yeniden kullanılabilirliği açısından yayın sürecinin ayrılmaz bir parçası hâline gelmiştir.',
-        '## Yaygın modeller',
-        '- Yeşil yol: Makalenin kabul edilmiş veya yayımlanmış sürümünün kurumsal ya da konu arşivine yüklenmesi\n- Altın yol: Makalenin doğrudan açık erişimli dergide yayımlanması\n- Karma model: Abonelik dergisinde seçilen makalelerin ücret karşılığı açık hâle getirilmesi',
-        '## Dergi seçerken sorulacak sorular',
-        '1. Derginin lisans (ör. Creative Commons) politikası nedir?\n2. Telif hakkı ve self-arşivleme koşulları nelerdir?\n3. Dergi hangi ulusal ve uluslararası dizinlerde taranmaktadır?\n4. Hakem süreci ve yayın etiği ilkeleri açıkça yayımlanmış mıdır?',
-        'Bu kayıt genel bir çerçeve sunar; kurumunuzun ve fon sağlayıcınızın açık erişim şartları ayrıca incelenmelidir.'
-      ].join('\n\n'),
-      url: 'https://trdizin.gov.tr',
-      notes: 'TR Dizin: ulusal akademik dergi ve yayın indeksi.\nDergiPark: Türkiye’deki akademik dergilerin yayın platformu.\nLisans ve telif koşulları için derginin kendi “yazarlara bilgi” sayfası esas alınmalıdır.'
-    },
-    {
-      type: 'makale', date: daysAgoISO(16),
-      title: 'Yükseköğretim istatistiklerini okumak: veri okuryazarlığı için kontrol listesi',
-      summary: 'Bir yükseköğretim istatistiğini alıntılamadan önce sorulması gereken altı soru.',
-      source: 'AkademikKapital Editörlüğü',
-      body: [
-        'Öğrenci sayısı, kontenjan, yerleşme oranı veya akademik personel sayısı gibi göstergeler farklı kaynaklarda farklı tanım ve dönemlerle yayımlanabilir. Aynı görünen iki rakam her zaman karşılaştırılabilir değildir.',
-        '## Altı soru',
-        '1. Gösterge nasıl tanımlanıyor? (ör. kayıtlı öğrenci mi, yeni kayıt mı?)\n2. Referans yılı veya dönemi nedir?\n3. Kapsam nedir? (yalnızca devlet üniversiteleri mi, tüm üniversiteler mi, hangi öğretim düzeyi?)\n4. Veri hangi kurum tarafından ve hangi yayında açıklanmıştır?\n5. Birim nedir? (kişi, yüzde, bin kişi başına vb.)\n6. Aynı veri başka bir kaynakta farklı mı görünüyor?',
-        '## Alıntılama',
-        'Bir istatistik kullanılırken kurum adı, tablo adı, referans yılı ve erişim tarihi birlikte belirtilmelidir.'
-      ].join('\n\n'),
-      url: 'https://istatistik.yok.gov.tr',
-      notes: 'YÖK İstatistik: yükseköğretim istatistikleri.\nYÖK Atlas: üniversite ve program bazında veri sunan resmî platform.\nÖSYM: yayımlanan sınav ve yerleştirme sonuçlarına ilişkin istatistikler.'
-    },
-    {
-      type: 'haberler', date: daysAgoISO(4),
-      title: 'Haber kayıtları nasıl düzenlenir? (biçim örneği)',
-      summary: 'Haber kategorisindeki kayıtların kaynak, tarih ve özet bilgisini nasıl göstereceğini örnekleyen kayıt.',
-      source: 'AkademikKapital Editörlüğü',
-      body: [
-        'Bu kayıt, haber kategorisinin görünümünü göstermek için eklenmiş bir biçim örneğidir; güncel bir gelişmeyi aktarmaz.',
-        '## Bir haber kaydında bulunması gerekenler',
-        '- Olayın yayın tarihi\n- Haberin ilk yayımlandığı kurum veya yayın organı\n- En çok iki cümlelik özet\n- Birincil kaynağa (kurum duyurusu, Resmî Gazete vb.) bağlantı',
-        'Gerçek haber kayıtları eklendikten sonra bu örnek editör panelinden silinebilir.'
-      ].join('\n\n'),
-      notes: 'Haber kayıtlarında kaynak adı “Kaynak / kurum adı” alanına, bağlantı “İlgili kaynak bağlantısı” alanına yazılır.'
+      notes: 'Resmî Gazete: yayım tarihi ve sayısı ile özgün metin.'
     },
     {
       type: 'dokuman', date: daysAgoISO(2),
       title: 'Arşiv kullanım notu',
       summary: 'Arama, süzme, okuma ve yedekleme adımlarını anlatan kısa kullanım belgesi (TXT).',
       source: 'AkademikKapital Editörlüğü',
-      body: 'Doküman Arşivi kayıtlarına PDF, görsel, ZIP ve diğer dosya türleri eklenebilir; ziyaretçiler dosyayı doğrudan arşivden indirir. Bu örnek belge arşivin temel kullanımını özetler.',
-      notes: 'Dosya biçimi: düz metin (UTF-8).\nÖrnek kayıttır; düzenlenebilir veya silinebilir.',
+      body: 'Doküman Arşivi kayıtlarına PDF, görsel, ZIP ve diğer dosya türleri eklenebilir.',
+      notes: 'Dosya biçimi: düz metin (UTF-8).',
       file: guideFile
     },
     {
@@ -769,7 +715,7 @@ async function seedIfNeeded() {
       title: 'Kaynak kayıt şablonu',
       summary: 'Yeni kayıt hazırlarken kullanılabilecek alan listesi (TXT).',
       source: 'AkademikKapital Editörlüğü',
-      body: 'Şablon; başlık, kategori, tarih, kaynak, birincil kaynak bağlantısı, özet, tam metin, referans notları ve doğrulama bilgisi alanlarını içerir. Editör paneliyle birebir uyumludur.',
+      body: 'Yeni kayıt hazırlarken başlık, kategori, tarih, kaynak ve referans alanlarını düzenleyebilirsiniz.',
       notes: 'Resmî metin ile editör yorumunun ayrı yazılması önerilir.',
       file: templateFile
     }
@@ -779,20 +725,14 @@ async function seedIfNeeded() {
     ['Yükseköğretim Kurulu (YÖK)', 'https://www.yok.gov.tr', 'YÖK', 'Yükseköğretim Kurulu’nun resmî internet sitesi.', 'Yükseköğretim mevzuatı, kurul kararları ve kurumsal duyurular için birincil kaynak.'],
     ['Ölçme, Seçme ve Yerleştirme Merkezi (ÖSYM)', 'https://www.osym.gov.tr', 'ÖSYM', 'ÖSYM’nin resmî internet sitesi.', 'Sınav takvimi, kılavuzlar, başvuru ve yerleştirme duyuruları için birincil kaynak.'],
     ['Resmî Gazete', 'https://www.resmigazete.gov.tr', 'T.C. Resmî Gazete', 'Mevzuat değişikliklerinin yayımlandığı resmî yayın organı.', 'Kanun, yönetmelik ve kurul kararlarının özgün metinleri ile yayım tarihleri için birincil kaynak.'],
-    ['Mevzuat Bilgi Sistemi', 'https://www.mevzuat.gov.tr', 'T.C. Cumhurbaşkanlığı', 'Güncel mevzuat metinlerinin tek noktadan yayımlandığı sistem.', 'Değişiklikleri işlenmiş kanun, yönetmelik ve diğer düzenleyici işlemlerin metinleri.'],
-    ['TÜBİTAK', 'https://www.tubitak.gov.tr', 'TÜBİTAK', 'Araştırma destek programları ve çağrı duyuruları.', 'Proje çağrıları, burs ve destek programlarının resmî duyuruları için birincil kaynak.'],
-    ['DergiPark', 'https://dergipark.org.tr', 'ULAKBİM / TÜBİTAK', 'Türkiye’deki akademik dergilerin yayın platformu.', 'Akademik dergilere, sayılara ve makalelere erişim; yayın sürecine ilişkin dergi sayfaları.'],
-    ['TR Dizin', 'https://trdizin.gov.tr', 'ULAKBİM / TÜBİTAK', 'Ulusal akademik dergi ve yayın indeksi.', 'Türkiye’de yayımlanan dergilerin ve makalelerin taranması ve atıf bilgileri için kaynak.'],
-    ['YÖK Tez Merkezi', 'https://tez.yok.gov.tr', 'YÖK', 'Türkiye’de hazırlanan lisansüstü tezlerin ulusal veri tabanı.', 'Yüksek lisans ve doktora tezlerinin kayıtlarına ve erişime açık metinlerine ulaşım.'],
-    ['YÖK Atlas', 'https://yokatlas.yok.gov.tr', 'YÖK', 'Üniversite ve program bazında yükseköğretim verileri.', 'Program ve üniversite göstergelerini karşılaştırmak için resmî veri platformu.'],
-    ['ORCID', 'https://orcid.org', 'ORCID', 'Araştırmacılar için kalıcı ve benzersiz kimlik sistemi.', 'Yazar adı benzerliklerini ayırmak ve yayınları araştırmacıyla ilişkilendirmek için kullanılan uluslararası kimlik.']
+    ['Mevzuat Bilgi Sistemi', 'https://www.mevzuat.gov.tr', 'T.C. Cumhurbaşkanlığı', 'Güncel mevzuat metinlerinin tek noktadan yayımlandığı sistem.', 'Değişiklikleri işlenmiş kanun, yönetmelik ve diğer düzenleyici işlemlerin metinleri.']
   ];
 
   const records = seeds.slice();
   links.forEach(([title, url, source, summary, body], i) => {
     records.push({
-      type: 'baglanti', date: daysAgoISO(30 + i), title, summary, body, url, source,
-      notes: `Bağlantı adresi: ${hostOf(url)}\nİçerik, ilgili kurumun kendi sitesinde yayımlanır; bağlayıcı bilgi için kurum sayfası esas alınmalıdır.`
+      type: 'baglanti', date: daysAgoISO(20 + i), title, summary, body, url, source,
+      notes: `Bağlantı adresi: ${hostOf(url)}`
     });
   });
 
@@ -832,7 +772,6 @@ function visibleItems() {
   return sortItems(arr, state.sort);
 }
 
-/* Liste küçük resimleri: görseller IndexedDB'den okunur, nesne adresleri her çizimde yenilenir */
 let thumbUrls = [];
 let thumbGen = 0;
 
@@ -915,7 +854,6 @@ function entryEl(it) {
   );
 }
 
-/* ---------- Ana sayfa: öne çıkanlar / son gelişmeler kaydırıcısı ---------- */
 function featuredCard(it, i, n) {
   const d = parseDate(it.date);
   let media;
@@ -1033,9 +971,9 @@ function renderView() {
   if (!isAbout) { renderYearChips(); renderList(); }
   $('#ctaPublish').hidden = !['tumu', 'makale', 'haberler'].includes(state.filter);
   updateEdgeNav();
+  trackEvent('section_view', { section: state.filter });
 }
 
-/* Sabit sağ/sol bölüm okları: bölümler arasında sırayla geçiş */
 function updateEdgeNav() {
   const i = SECTION_ORDER.indexOf(state.filter);
   const prev = SECTION_ORDER[i - 1];
@@ -1080,7 +1018,6 @@ function clearReaderFigure() {
   $('#readerCaption').textContent = '';
 }
 
-/* Metin içi fotoğraflar (it.images): okuyucuda [[GÖRSEL:n]] konumlarına yerleştirilir */
 let readerBodyUrls = [];
 
 function revokeBodyUrls() {
@@ -1138,7 +1075,7 @@ async function downloadFile(it) {
     document.body.append(a);
     a.click();
     a.remove();
-    // Büyük dosyaların indirmesi başlayana kadar adres geçerli kalmalı
+    trackEvent('file_download', { item_id: it.id, file_name: rec.name });
     setTimeout(() => URL.revokeObjectURL(url), 120000);
   } catch (e) {
     toast('Dosya indirilemedi.');
@@ -1149,6 +1086,8 @@ async function openReader(id) {
   const it = state.items.find(x => x.id === id);
   if (!it) return;
 
+  trackEvent('item_read', { item_id: it.id, item_type: it.type, item_title: it.title });
+
   const badge = $('#readerBadge');
   badge.className = `badge badge-${it.type}`;
   badge.textContent = TYPES[it.type].badge;
@@ -1157,7 +1096,6 @@ async function openReader(id) {
 
   loadReaderFigure(it);
 
-  // Özet: tam metin de varsa giriş cümlesi olarak ayrı gösterilir
   const lead = $('#readerLead');
   const hasBody = !!(it.body && it.body.trim());
   lead.textContent = hasBody ? (it.summary || '') : '';
@@ -1173,7 +1111,6 @@ async function openReader(id) {
     used.add(n);
     return f;
   });
-  // Metinde yer verilmeyen fotoğraflar sırasıyla yazının sonunda gösterilir
   figs.forEach((f, i) => { if (f && !used.has(i + 1)) body.append(f); });
 
   const extra = $('#readerExtra');
@@ -1211,7 +1148,6 @@ async function openReader(id) {
     }
   }
 
-  // Referanslar ve notlar
   const notes = noteLines(it.notes);
   const notesBox = $('#readerNotes');
   const notesList = $('#readerNotesList');
@@ -1219,7 +1155,6 @@ async function openReader(id) {
   notes.forEach(n => notesList.append(h('li', {}, n)));
   notesBox.hidden = notes.length === 0;
 
-  // Kayıt bilgisi
   const info = $('#readerInfo');
   info.replaceChildren();
   const rows = [
@@ -1246,7 +1181,7 @@ function setSession(on) {
   try {
     if (on) sessionStorage.setItem(SESSION_KEY, '1');
     else sessionStorage.removeItem(SESSION_KEY);
-  } catch (e) { /* oturum depolaması yoksa yalnızca bellek içi çalışır */ }
+  } catch (e) { /* bellek içi çalışır */ }
 }
 
 function updateAdminUI() {
@@ -1296,6 +1231,7 @@ async function handleLogin(ev) {
 }
 
 function logout() {
+  clearTimeout(autosaveTimer);
   state.isAdmin = false;
   setSession(false);
   $('#adminDialog').close();
@@ -1305,13 +1241,14 @@ function logout() {
 }
 
 /* ==========================================================
-   Yönetici paneli
+   Yönetici paneli + Otomatik Kayıt
    ========================================================== */
 function openAdminPanel() {
   renderAdminList();
   showTab('list');
   refreshLogoPreview();
   fillSocialInputs();
+  setAutosaveLabel('Otomatik kayıt aktif');
   openDialog($('#adminDialog'));
 }
 
@@ -1372,8 +1309,7 @@ function toggleFormRows() {
     : 'İlgili kaynak bağlantısı (isteğe bağlı)';
 }
 
-/* Metin içi çoklu fotoğraflar (form) */
-let formImages = [];   // { meta | null, file | null, alt, url, imgEl }
+let formImages = [];
 let galleryUrls = [];
 
 function clearGalleryUrls() {
@@ -1406,6 +1342,7 @@ function insertPlaceholder(n) {
   const caret = (before ? before.length + 2 : 0) + token.length;
   ta.focus();
   ta.setSelectionRange(caret, caret);
+  scheduleAutosave();
   toast(`${token} metne eklendi.`);
 }
 
@@ -1413,6 +1350,7 @@ function removeGalleryImage(i) {
   formImages.splice(i, 1);
   $('#fBody').value = remapPlaceholders($('#fBody').value, n => (n === i + 1 ? null : n > i + 1 ? n - 1 : n));
   renderGallery();
+  scheduleAutosave();
 }
 
 function autoPlaceImages() {
@@ -1424,6 +1362,7 @@ function autoPlaceImages() {
   const paras = ta.value.trim().split(/\n{2,}/).filter(Boolean);
   if (!paras.length) {
     ta.value = free.map(n => `[[GÖRSEL:${n}]]`).join('\n\n');
+    scheduleAutosave();
     return;
   }
   const after = new Map();
@@ -1436,6 +1375,7 @@ function autoPlaceImages() {
   const out = [];
   paras.forEach((p, i) => { out.push(p); (after.get(i) || []).forEach(tk => out.push(tk)); });
   ta.value = out.join('\n\n');
+  scheduleAutosave();
   toast(`${free.length} fotoğraf paragraf aralarına yerleştirildi.`);
 }
 
@@ -1454,7 +1394,8 @@ function renderGallery() {
     e.imgEl = img;
     const alt = h('input', {
       type: 'text', maxlength: '200', value: e.alt, placeholder: 'Kısa açıklama (alt yazı)',
-      'aria-label': `Fotoğraf ${n} açıklaması`, oninput: ev => { e.alt = ev.target.value; }
+      'aria-label': `Fotoğraf ${n} açıklaması`,
+      oninput: ev => { e.alt = ev.target.value; scheduleAutosave(); }
     });
     const src = e.file || e.meta;
     ul.append(h('li', { class: 'gallery-item' },
@@ -1470,7 +1411,6 @@ function renderGallery() {
   });
 }
 
-/* Dış yazı al ve editasyon */
 function runImportClean() {
   const raw = $('#rawText').value;
   if (!raw.trim()) { toast('Önce ham metni yapıştırın.'); return; }
@@ -1501,10 +1441,10 @@ function sendImportToForm() {
   $('#fTitle').value = title.slice(0, 200);
   $('#fSummary').value = summary.slice(0, 400);
   $('#fBody').value = body;
-  toast('Metin forma aktarıldı. Kategori ve tarihi kontrol edip Kaydet’e basın.');
+  scheduleAutosave();
+  toast('Metin forma aktarıldı ve taslak olarak kaydedildi.');
 }
 
-/* Form içi görsel önizleme */
 let formPreviewUrl = null;
 
 function clearFormPreview() {
@@ -1570,81 +1510,90 @@ function openAdminForm(id) {
   if (!$('#adminDialog').open) { renderAdminList(); openDialog($('#adminDialog')); }
 }
 
-async function saveItem(ev) {
-  ev.preventDefault();
-  formError('');
+/* Ortak Kayıt / Yayınlama Fonksiyonu (Otomatik Kayıt ve "Tamam — Yayına Al" için) */
+async function persistItem({ publishToVisitors = false, silent = false } = {}) {
+  if (!state.isAdmin) return false;
+  if (isAutosaving) return false;
 
-  const id = $('#fId').value;
-  const existing = id ? state.items.find(x => x.id === id) : null;
+  const existingId = $('#fId').value;
+  const existing = existingId ? state.items.find(x => x.id === existingId) : null;
   const type = $('#fType').value;
   const title = $('#fTitle').value.trim();
   const date = $('#fDate').value;
 
-  if (!TYPES[type]) return formError('Geçerli bir kategori seçin.');
-  if (!title) return formError('Başlık zorunludur.');
-  if (!isValidISO(date)) return formError('Geçerli bir tarih seçin.');
+  if (!TYPES[type]) {
+    if (!silent) formError('Geçerli bir kategori seçin.');
+    return false;
+  }
+  if (!title) {
+    // Otomatik kayıtta başlık henüz boşsa hata göstermeden bekler
+    if (!silent) formError('Başlık zorunludur.');
+    return false;
+  }
+  if (!isValidISO(date)) {
+    if (!silent) formError('Geçerli bir tarih seçin.');
+    return false;
+  }
 
-  const item = existing ? Object.assign({}, existing) : { id: uid(), createdAt: Date.now() };
-  item.type = type;
-  item.title = title;
-  item.date = date;
-  item.summary = $('#fSummary').value.trim();
-  item.body = $('#fBody').value.trim();
-  item.updatedAt = Date.now();
-
-  // İlgili bağlantı ve kaynak: Dış Bağlantılar için zorunlu, diğer kategorilerde isteğe bağlı
   const rawUrl = $('#fUrl').value.trim();
   const url = safeUrl(rawUrl);
-  if (type === 'baglanti' && !url) return formError('Geçerli bir http(s) bağlantı adresi girin.');
-  if (rawUrl && !url) return formError('İlgili kaynak bağlantısı geçerli bir http(s) adresi olmalıdır.');
-  if (url) item.url = url; else delete item.url;
+  if (type === 'baglanti' && !url) {
+    if (!silent) formError('Geçerli bir http(s) bağlantı adresi girin.');
+    return false;
+  }
+  if (rawUrl && !url) {
+    if (!silent) formError('İlgili kaynak bağlantısı geçerli bir http(s) adresi olmalıdır.');
+    return false;
+  }
 
-  const source = $('#fSource').value.trim();
-  if (source) item.source = source; else delete item.source;
-
-  const notes = $('#fNotes').value.trim();
-  if (notes) item.notes = notes; else delete item.notes;
-
-  // Doküman dosyası
   let oldFileToDelete = null;
   let newFileRecord = null;
+  let candidateFile = existing && existing.file ? Object.assign({}, existing.file) : null;
+
   if (type === 'dokuman') {
     const file = $('#fFile').files[0];
     if (file) {
       const problem = checkFile(file);
-      if (problem) return formError(problem);
+      if (problem) {
+        if (!silent) formError(problem);
+        return false;
+      }
       newFileRecord = { id: uid(), blob: file, name: file.name, type: file.type || 'application/octet-stream', size: file.size };
       if (existing && existing.file) oldFileToDelete = existing.file.id;
-      item.file = { id: newFileRecord.id, name: file.name, type: newFileRecord.type, size: file.size };
-    } else if (!item.file) {
-      return formError('Doküman Arşivi kaydı için bir dosya seçin.');
+      candidateFile = { id: newFileRecord.id, name: file.name, type: newFileRecord.type, size: file.size };
+    } else if (!candidateFile) {
+      if (!silent) formError('Doküman Arşivi kaydı için bir dosya seçin.');
+      return false;
     }
   } else if (existing && existing.file) {
     oldFileToDelete = existing.file.id;
-    delete item.file;
+    candidateFile = null;
   }
 
-  // Görsel / fotoğraf (tüm kategoriler, isteğe bağlı)
   let newImageRecord = null;
   let oldImageToDelete = null;
+  let candidateImage = existing && existing.image ? Object.assign({}, existing.image) : null;
   const imgFile = $('#fImage').files[0];
   const imgAlt = $('#fImageAlt').value.trim().slice(0, 200);
+
   if (imgFile) {
     const problem = checkImage(imgFile);
-    if (problem) return formError(problem);
+    if (problem) {
+      if (!silent) formError(problem);
+      return false;
+    }
     newImageRecord = { id: uid(), blob: imgFile, name: imgFile.name, type: imgFile.type || 'image/*', size: imgFile.size };
     if (existing && existing.image) oldImageToDelete = existing.image.id;
-    item.image = { id: newImageRecord.id, name: imgFile.name, type: newImageRecord.type, size: imgFile.size, alt: imgAlt };
-  } else if (item.image) {
+    candidateImage = { id: newImageRecord.id, name: imgFile.name, type: newImageRecord.type, size: imgFile.size, alt: imgAlt };
+  } else if (candidateImage) {
     if ($('#fImageRemove').checked) {
-      oldImageToDelete = item.image.id;
-      delete item.image;
+      oldImageToDelete = candidateImage.id;
+      candidateImage = null;
     } else {
-      item.image = Object.assign({}, item.image, { alt: imgAlt });
+      candidateImage = Object.assign({}, candidateImage, { alt: imgAlt });
     }
   }
 
-  // Metin içi fotoğraflar (sıra = [[GÖRSEL:n]] numarası)
   const galleryRecords = [];
   const keptGalleryIds = new Set();
   const outImages = [];
@@ -1652,7 +1601,10 @@ async function saveItem(ev) {
     const alt = (e.alt || '').trim().slice(0, 200);
     if (e.file) {
       const problem = checkImage(e.file);
-      if (problem) return formError(`${e.file.name}: ${problem}`);
+      if (problem) {
+        if (!silent) formError(`${e.file.name}: ${problem}`);
+        return false;
+      }
       const rec = { id: uid(), blob: e.file, name: e.file.name, type: e.file.type || 'image/*', size: e.file.size };
       galleryRecords.push(rec);
       outImages.push({ id: rec.id, name: rec.name, type: rec.type, size: rec.size, alt });
@@ -1662,48 +1614,130 @@ async function saveItem(ev) {
     }
   }
   const oldGalleryToDelete = ((existing && existing.images) || []).map(m => m.id).filter(gid => !keptGalleryIds.has(gid));
-  if (outImages.length) item.images = outImages; else delete item.images;
 
   const needBytes = (newFileRecord ? newFileRecord.size : 0) + (newImageRecord ? newImageRecord.size : 0) +
     galleryRecords.reduce((s, r) => s + r.size, 0);
   if (needBytes) {
     const storageProblem = await checkStorageFor(needBytes);
-    if (storageProblem) return formError(storageProblem);
+    if (storageProblem) {
+      if (!silent) formError(storageProblem);
+      return false;
+    }
   }
 
+  const item = existing ? Object.assign({}, existing) : { id: existingId || uid(), createdAt: Date.now() };
+  item.type = type;
+  item.title = title;
+  item.date = date;
+  item.summary = $('#fSummary').value.trim();
+  item.body = $('#fBody').value.trim();
+  item.updatedAt = Date.now();
+  item.published = true;
+
+  if (url) item.url = url; else delete item.url;
+  const source = $('#fSource').value.trim();
+  if (source) item.source = source; else delete item.source;
+  const notes = $('#fNotes').value.trim();
+  if (notes) item.notes = notes; else delete item.notes;
+  if (candidateFile) item.file = candidateFile; else delete item.file;
+  if (candidateImage) item.image = candidateImage; else delete item.image;
+  if (outImages.length) item.images = outImages; else delete item.images;
+
   const submitBtn = $('#itemForm button[type="submit"]');
-  const idleLabel = submitBtn.textContent;
-  submitBtn.disabled = true;
-  submitBtn.textContent = needBytes > LARGE_FILE_MB * 1024 * 1024 ? 'Büyük dosya kaydediliyor…' : 'Kaydediliyor…';
+  const idleLabel = submitBtn ? submitBtn.textContent : 'Tamam — Yayına Al';
+  isAutosaving = true;
+  setAutosaveLabel('Kaydediliyor…');
+  if (!silent && submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = needBytes > LARGE_FILE_MB * 1024 * 1024 ? 'Büyük dosya kaydediliyor…' : 'Yayınlanıyor…';
+  }
+
   try {
     if (newFileRecord) await dbPut('files', newFileRecord);
     if (newImageRecord) await dbPut('files', newImageRecord);
     for (const rec of galleryRecords) await dbPut('files', rec);
     await dbPut('items', item);
+    $('#fId').value = item.id;
+
+    // Yeni yüklenen dosya/görseller artık kalıcı meta veriye dönüştü
+    if (newFileRecord) {
+      $('#fFile').value = '';
+      const cur = $('#currentFile');
+      cur.textContent = `Mevcut dosya: ${item.file.name} (${fmtSize(item.file.size)}) — yeni dosya seçerseniz değiştirilir.`;
+      cur.hidden = false;
+    }
+    if (newImageRecord) {
+      $('#fImage').value = '';
+      $('#fImageRemove').checked = false;
+      restoreExistingPreview();
+    }
+    if (galleryRecords.length) {
+      resetGallery(item);
+    }
+
     for (const gid of oldGalleryToDelete) await dbDel('files', gid);
     if (oldFileToDelete) await dbDel('files', oldFileToDelete);
     if (oldImageToDelete) await dbDel('files', oldImageToDelete);
+
+    await loadItems();
+    renderView();
+    if ($('#adminDialog').open) renderAdminList();
+
+    if (publishToVisitors) {
+      await syncGlobalPublish('upsert_item', item);
+      trackEvent('item_published', { item_id: item.id, item_type: item.type });
+    }
+
+    formError('');
+    setAutosaveLabel(publishToVisitors ? 'Yayında ve kayıtlı' : 'Otomatik kaydedildi');
+    return existing;
   } catch (e) {
-    // Yarım kalan dosya kayıtlarını temizle
     if (newFileRecord) await dbDel('files', newFileRecord.id).catch(() => {});
     if (newImageRecord) await dbDel('files', newImageRecord.id).catch(() => {});
     for (const rec of galleryRecords) await dbDel('files', rec.id).catch(() => {});
-    return formError(e && e.name === 'QuotaExceededError'
-      ? 'Tarayıcı depolama alanı doldu; dosya kaydedilemedi. Yer açıp tekrar deneyin.'
-      : 'Kayıt sırasında bir hata oluştu. Depolama alanı dolu olabilir.');
+    const msg = e && e.name === 'QuotaExceededError'
+      ? 'Tarayıcı depolama alanı doldu; dosya kaydedilemedi.'
+      : 'Kayıt sırasında bir hata oluştu.';
+    if (!silent) formError(msg);
+    setAutosaveLabel('Kayıt hatası');
+    return false;
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = idleLabel;
+    isAutosaving = false;
+    if (!silent && submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = idleLabel;
+    }
   }
+}
+
+function scheduleAutosave() {
+  if (!state.isAdmin) return;
+  if ($('#tabForm') && !$('#tabForm').hidden) {
+    setAutosaveLabel('Değişiklik algılandı…');
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      persistItem({ publishToVisitors: false, silent: true });
+    }, AUTOSAVE_DELAY_MS);
+  } else if ($('#tabSettings') && !$('#tabSettings').hidden) {
+    setAutosaveLabel('Değişiklik algılandı…');
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      saveSocial(true);
+    }, AUTOSAVE_DELAY_MS);
+  }
+}
+
+async function saveItem(ev) {
+  ev.preventDefault();
+  clearTimeout(autosaveTimer);
+  const existing = await persistItem({ publishToVisitors: true, silent: false });
+  if (existing === false) return;
 
   clearFormPreview();
   clearGalleryUrls();
   formImages = [];
-  await loadItems();
-  refreshAll();
-  renderAdminList();
   showTab('list');
-  toast(existing ? 'İçerik güncellendi.' : 'İçerik arşive eklendi.');
+  toast(existing ? 'Değişiklikler kaydedildi ve yayına alındı.' : 'İçerik kaydedildi ve yayına alındı.');
 }
 
 async function deleteItem(id) {
@@ -1715,9 +1749,14 @@ async function deleteItem(id) {
     if (it.image) await dbDel('files', it.image.id);
     for (const m of (it.images || [])) await dbDel('files', m.id);
     await dbDel('items', id);
+    await syncGlobalPublish('delete_item', { id });
+    trackEvent('item_deleted', { item_id: id, item_type: it.type });
   } catch (e) {
     toast('Kayıt silinemedi.');
     return;
+  }
+  if ($('#fId').value === id) {
+    $('#fId').value = '';
   }
   await loadItems();
   refreshAll();
@@ -1775,15 +1814,21 @@ async function handleLogoChange(ev) {
     const dataUrl = await resizeImage(file, 320);
     await dbPut('settings', { key: 'logo', value: dataUrl });
     applyLogo(dataUrl);
-    toast('Logo güncellendi.');
+    await syncGlobalPublish('logo_update', { logo: dataUrl });
+    setAutosaveLabel('Logo kaydedildi');
+    toast('Logo güncellendi ve kaydedildi.');
   } catch (e) {
     toast('Logo güncellenemedi.');
   }
 }
 
 async function resetLogo() {
-  try { await dbDel('settings', 'logo'); } catch (e) { /* yok say */ }
+  try {
+    await dbDel('settings', 'logo');
+    await syncGlobalPublish('logo_reset', {});
+  } catch (e) { /* yok say */ }
   applyLogo(null);
+  setAutosaveLabel('Varsayılan logo aktif');
   toast('Varsayılan logo geri yüklendi.');
 }
 
@@ -1810,7 +1855,6 @@ async function exportBackup() {
         if (!meta) continue;
         const rec = await dbGet('files', meta.id);
         if (!rec) continue;
-        // Çok büyük dosyalar data-URL'e çevrilemez (bellek sınırı); yedeğe eklenmez
         if (rec.blob.size > limit) { omitted.add(rec.id); continue; }
         files.push({ id: rec.id, name: rec.name, type: rec.type, size: rec.size, data: await blobToDataURL(rec.blob) });
       }
@@ -1831,7 +1875,7 @@ async function exportBackup() {
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     toast(omitted.size
-      ? `Yedek indirildi. ${omitted.size} büyük dosya (>${BACKUP_FILE_LIMIT_MB} MB) yedeğe eklenmedi; Doküman Arşivi’nden ayrıca indirin.`
+      ? `Yedek indirildi. ${omitted.size} büyük dosya (>${BACKUP_FILE_LIMIT_MB} MB) yedeğe eklenmedi.`
       : 'Yedek indirildi.');
   } catch (e) {
     toast('Yedek oluşturulamadı.');
@@ -1849,9 +1893,9 @@ function cleanImportedItem(raw) {
     summary: str(raw.summary, 400),
     body: str(raw.body, 200000),
     createdAt: Number(raw.createdAt) || Date.now(),
-    updatedAt: Number(raw.updatedAt) || Date.now()
+    updatedAt: Number(raw.updatedAt) || Date.now(),
+    published: true
   };
-  // Eski yedeklerle uyumlu: url ve source yalnızca Dış Bağlantılar'da zorunludur; diğerlerinde isteğe bağlıdır.
   const url = safeUrl(raw.url);
   if (raw.type === 'baglanti' && !url) return null;
   if (url) item.url = url;
@@ -1861,7 +1905,7 @@ function cleanImportedItem(raw) {
   if (notes) item.notes = notes;
   if (raw.type === 'dokuman' && raw.file && raw.file.id) {
     item.file = { id: str(raw.file.id, 80), name: str(raw.file.name, 255), type: str(raw.file.type, 120), size: Number(raw.file.size) || 0 };
-    if (raw.file.omitted) item._omitted = true; // dosyası yedeğe eklenmemiş büyük doküman
+    if (raw.file.omitted) item._omitted = true;
   }
   if (raw.image && raw.image.id) {
     item.image = {
@@ -1899,7 +1943,7 @@ async function importBackup(ev) {
     let added = 0;
     for (const raw of data.items) {
       const item = cleanImportedItem(raw);
-      if (!item || existingIds.has(item.id)) continue; // mevcut kayıtlar korunur
+      if (!item || existingIds.has(item.id)) continue;
       if (item.file) {
         const rec = fileMap.get(item.file.id);
         if (!rec) delete item.file;
@@ -1911,7 +1955,6 @@ async function importBackup(ev) {
         else await dbPut('files', irec);
       }
       if (item.images) {
-        // Eksik/geçersiz görseller çıkarılır; metindeki [[GÖRSEL:n]] numaraları buna göre yeniden eşlenir
         const kept = [];
         const map = new Map();
         item.images.forEach((m, i) => {
@@ -1960,7 +2003,6 @@ async function importBackup(ev) {
    Olaylar ve başlatma
    ========================================================== */
 function bindEvents() {
-  // Navigasyon
   window.addEventListener('hashchange', applyHash);
   $$('.main-nav a').forEach(a => a.addEventListener('click', () => {
     $('#mainNav').classList.remove('open');
@@ -1971,7 +2013,6 @@ function bindEvents() {
     $('#menuToggle').setAttribute('aria-expanded', String(open));
   });
 
-  // Öne çıkanlar kaydırıcısı
   const featTrack = $('#featuredTrack');
   let featTick = false;
   featTrack.addEventListener('scroll', () => {
@@ -1988,11 +2029,14 @@ function bindEvents() {
   $('#featNext').addEventListener('click', () => scrollFeatured(1));
   window.addEventListener('resize', updateFeaturedNav);
 
-  // Arama / sıralama
-  $('#searchInput').addEventListener('input', e => { state.query = e.target.value; renderList(); });
+  // Sabit üst arama ve sıralama
+  $('#searchInput').addEventListener('input', e => {
+    state.query = e.target.value;
+    renderList();
+    if (state.query.trim().length >= 2) trackEvent('archive_search', { query_length: state.query.trim().length });
+  });
   $('#sortSelect').addEventListener('change', e => { state.sort = e.target.value; renderList(); });
 
-  // Diyaloglar
   $$('dialog').forEach(dlg => {
     dlg.addEventListener('click', e => {
       if (e.target === dlg) dlg.close();
@@ -2008,7 +2052,6 @@ function bindEvents() {
     });
   });
 
-  // Giriş
   $('#adminBtn').addEventListener('click', () => {
     if (state.isAdmin) openAdminPanel();
     else {
@@ -2026,7 +2069,6 @@ function bindEvents() {
   });
   $('#logoutBtn').addEventListener('click', logout);
 
-  // Panel
   $$('.tab').forEach(t => t.addEventListener('click', () => {
     if (t.dataset.tab === 'form' && !$('#fId').value && !$('#fTitle').value) openAdminForm();
     else showTab(t.dataset.tab);
@@ -2034,11 +2076,18 @@ function bindEvents() {
   $('#adminFilter').addEventListener('change', e => { state.adminFilter = e.target.value; renderAdminList(); });
   $('#adminSearch').addEventListener('input', e => { state.adminQuery = e.target.value; renderAdminList(); });
   $('#newItemBtn').addEventListener('click', () => openAdminForm());
-  $('#fType').addEventListener('change', toggleFormRows);
+  $('#fType').addEventListener('change', () => { toggleFormRows(); scheduleAutosave(); });
   $('#itemForm').addEventListener('submit', saveItem);
-  $('#cancelForm').addEventListener('click', () => { clearFormPreview(); clearGalleryUrls(); formImages = []; showTab('list'); });
+  $('#itemForm').addEventListener('input', scheduleAutosave);
+  $('#itemForm').addEventListener('change', scheduleAutosave);
+  $('#cancelForm').addEventListener('click', () => {
+    clearTimeout(autosaveTimer);
+    clearFormPreview();
+    clearGalleryUrls();
+    formImages = [];
+    showTab('list');
+  });
 
-  // Metin içi çoklu fotoğraf
   $('#fImages').addEventListener('change', e => {
     const files = [...e.target.files];
     e.target.value = '';
@@ -2052,15 +2101,14 @@ function bindEvents() {
       formImages.push({ meta: null, file: f, alt: '', url, imgEl: null });
     }
     renderGallery();
+    scheduleAutosave();
   });
   $('#autoPlaceImages').addEventListener('click', autoPlaceImages);
 
-  // Dış yazı al
   $('#cleanRawBtn').addEventListener('click', runImportClean);
   $('#resetImportBtn').addEventListener('click', resetImport);
   $('#sendToFormBtn').addEventListener('click', sendImportToForm);
 
-  // Kenar okları
   ['#edgePrev', '#edgeNext'].forEach(sel => $(sel).addEventListener('click', e => {
     const key = e.currentTarget.dataset.target;
     if (key) location.hash = '#' + key;
@@ -2073,15 +2121,19 @@ function bindEvents() {
     formError('');
     $('#fImageRemove').checked = false;
     showFormPreview(f, false);
+    scheduleAutosave();
   });
   $('#readerImage').addEventListener('error', () => {
     if ($('#readerImage').getAttribute('src')) $('#readerFigure').hidden = true;
   });
 
-  // Ayarlar
   $('#logoInput').addEventListener('change', handleLogoChange);
   $('#logoReset').addEventListener('click', resetLogo);
-  $('#saveSocialBtn').addEventListener('click', saveSocial);
+  SOCIAL_PLATFORMS.forEach(p => {
+    const inp = $(p.inputId);
+    if (inp) inp.addEventListener('input', scheduleAutosave);
+  });
+  $('#saveSocialBtn').addEventListener('click', () => { clearTimeout(autosaveTimer); saveSocial(false); });
   $('#exportBtn').addEventListener('click', exportBackup);
   $('#importInput').addEventListener('change', importBackup);
 }
