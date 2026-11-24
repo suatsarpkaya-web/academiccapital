@@ -3,16 +3,13 @@
  * Özellikler:
  * - Tek veri kaynağı (JSON verisi + /api/archive + localStorage)
  * - Sıralama: Yalnızca Yeniden Eskiye (newest) ve Eskiden Yeniye (oldest)
- * - Editör bülten seçkisi hazırlama ve sadece editöre açık bülten abone listesi
- * - Türkçe karakter duyarsız arama + vurgulama, URL senkronizasyonu, tek sütun detay ve APA künye
+ * - Geniş Yönetim Paneli: Yazı ekleme, düzenleme, silme ve editör onay kuyruğu ("Yayın Niteliği" kaldırıldı)
+ * - Bülten aboneliği kaldırıldı; sade açık erişim arşiv kurgusu
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  const ARCHIVE_STORAGE_KEY = 'ak_archive_records_v4';
-  const PENDING_STORAGE_KEY = 'ak_pending_submissions_v4';
-  const NEWSLETTER_STATE_KEY = 'ak_newsletter_state_v4';
-  const SUBSCRIBERS_STORAGE_KEY = 'ak_editor_subscribers_v4';
-  const DIGEST_STORAGE_KEY = 'ak_weekly_digest_v4';
+  const ARCHIVE_STORAGE_KEY = 'ak_archive_records_v5';
+  const PENDING_STORAGE_KEY = 'ak_pending_submissions_v5';
   const ADMIN_PASSCODE = 'akademik2026';
   const PAGE_SIZE = 6;
 
@@ -29,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       id: 'yok-2026-rapor',
       type: 'dokuman',
-      genre: 'Resmî Belge',
       featured: true,
       title: 'Yükseköğretim Kurumları 2026 Akademik Kadro ve Program Raporu',
       summary: 'Üniversitelerdeki program açılışları, araştırma üniversiteleri göstergeleri ve insan kaynağı dağılımına ilişkin temel veri özeti.',
@@ -50,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       id: 'yonetisim-ozerklik-analiz',
       type: 'makale',
-      genre: 'Analiz / Görüş',
       featured: false,
       title: 'Üniversitelerde Akademik Özerklik, Dijital Dönüşüm ve Kamu Yararı',
       summary: 'Yükseköğretim kurumlarında dijitalleşme ve performans ölçütlerinin akademik özerklik ve kamusal sorumlulukla ilişkisini inceleyen değerlendirme.',
@@ -71,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       id: 'osym-takvim-duyurusu',
       type: 'duyurular',
-      genre: 'Haber / Duyuru',
       featured: false,
       title: '2026 Yılı Son Dönem Merkezi Sınav ve Başvuru Takvimi Güncellemesi',
       summary: 'Ölçme, Seçme ve Yerleştirme Merkezi tarafından yayımlanan güncel sınav ve tercih/başvuru tarihlerine ilişkin özet duyuru.',
@@ -91,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       id: 'yok-atlas-portal',
       type: 'baglanti',
-      genre: 'Resmî Belge',
       featured: false,
       title: 'YÖK Atlas — Yükseköğretim Program ve Tercih İstatistikleri Portalı',
       summary: 'Lisans ve ön lisans programlarına ilişkin yerleşen verileri, başarı sıraları ve kontenjan bilgilerine doğrudan erişim bağlantısı.',
@@ -111,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       id: 'arastirma-fonlari-haber',
       type: 'haberler',
-      genre: 'Haber / Duyuru',
       featured: false,
       title: 'Doktora Sonrası Araştırma ve Uluslararası Hareketlilik Çağrıları',
       summary: 'Araştırmacılara yönelik güncel proje ve hareketlilik çağrılarının takvim ve başvuru koşullarına dair bilgilendirme notu.',
@@ -131,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       id: 'kalite-kurulu-2025',
       type: 'dokuman',
-      genre: 'Resmî Belge',
       featured: false,
       title: 'Kurumsal Akreditasyon ve İç Kalite Güvencesi Değerlendirme Notu',
       summary: 'Üniversitelerde iç kalite güvencesi sistemleri, öz değerlendirme raporları ve dış değerlendirme ölçütlerine ilişkin özet belge.',
@@ -153,16 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Durum
   let records = [];
   let pendingSubmissions = [];
-  let editorSubscribers = [];
-  let weeklyDigest = {
-    headline: '',
-    selectedIds: []
-  };
 
   let state = {
     tab: 'tumu',
     q: '',
-    sira: 'newest', // Sadece 'newest' (Yeniden Eskiye) ve 'oldest' (Eskiden Yeniye)
+    sira: 'newest',
     year: 'ALL',
     topic: 'ALL',
     visibleLimit: PAGE_SIZE,
@@ -355,16 +341,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // =========================================================================
-  // Veri Yükleme & Bülten Seçkisini Yansıtma
+  // Veri Yükleme
   // =========================================================================
   async function initApp() {
     readStateFromUrl();
     pendingSubmissions = loadJsonStorage(PENDING_STORAGE_KEY, []);
-    editorSubscribers = loadJsonStorage(SUBSCRIBERS_STORAGE_KEY, []);
-    weeklyDigest = loadJsonStorage(DIGEST_STORAGE_KEY, { headline: '', selectedIds: [] });
-
-    applyDigestToNewsletterBanner();
-    restoreNewsletterUi();
 
     setStatus('loading', 'Arşiv kayıtları yükleniyor...');
     try {
@@ -400,22 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderArchive();
   }
 
-  function applyDigestToNewsletterBanner() {
-    const descEl = document.getElementById('newsletterDigestPreview');
-    if (!descEl) return;
-
-    const chosenTitles = (weeklyDigest.selectedIds || [])
-      .map((id) => records.find((r) => r.id === id)?.title)
-      .filter(Boolean);
-
-    if (weeklyDigest.headline || chosenTitles.length > 0) {
-      const parts = [];
-      if (weeklyDigest.headline) parts.push(weeklyDigest.headline);
-      if (chosenTitles.length > 0) parts.push(`Seçki: ${chosenTitles.join(' • ')}`);
-      descEl.textContent = parts.join(' — ');
-    }
-  }
-
   function populateFilterOptions() {
     const years = Array.from(
       new Set(records.map((r) => (r.date || '').slice(0, 4)).filter(Boolean))
@@ -448,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Filtreleme, Sıralama (Sadece Yeniden Eskiye / Eskiden Yeniye) ve Liste
+  // Filtreleme, Sıralama ve Listeleme
   // =========================================================================
   function getMatchedRecords() {
     const normQ = normalizeTr(state.q);
@@ -539,7 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
       <article class="archive-card ${isFeatured ? 'archive-card--featured' : ''}" data-id="${escapeHtml(item.id)}">
         <div class="card-meta-top">
           <span class="type-badge">${escapeHtml(typeLabel)}</span>
-          <span class="genre-badge">${escapeHtml(item.genre || 'Haber / Duyuru')}</span>
           ${item.topic ? `<span>#${escapeHtml(item.topic)}</span>` : ''}
         </div>
 
@@ -595,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderArchive();
   }
 
-  function showAboutView(anchorId = null) {
+  function showAboutView() {
     state.viewMode = 'about';
     state.activeDetailId = null;
     archiveView.classList.add('hidden');
@@ -603,11 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
     aboutView.classList.remove('hidden');
     updateTabUi('hakkimizda');
     syncUrlState();
-    if (anchorId) {
-      document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   document.getElementById('sectionTabs').addEventListener('click', (e) => {
@@ -642,10 +602,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('backToArchiveBtn').addEventListener('click', () => showArchiveView(true));
-  document.getElementById('kvkkOpenLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    showAboutView('hakkimizda-kvkk');
-  });
 
   // =========================================================================
   // Tek Sütun Detay Görünümü, Kalıcı URL, Yazdır, Paylaş ve APA Künye
@@ -659,7 +615,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const permalink = `${window.location.origin}/?id=${encodeURIComponent(item.id)}`;
     document.getElementById('detailTypeBadge').textContent = TYPE_LABELS[item.type] || item.type;
-    document.getElementById('detailGenreBadge').textContent = item.genre || 'Haber / Duyuru';
     document.getElementById('detailTitle').textContent = item.title;
     document.getElementById('detailAuthor').textContent = item.author || 'AkademikKapital';
     document.getElementById('detailSource').textContent = item.source || 'Arşiv';
@@ -738,103 +693,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('copyPermalinkBtn').addEventListener('click', () => {
     copyToClipboard(document.getElementById('detailPermalink').textContent, 'Kalıcı bağlantı panoya kopyalandı.');
-  });
-
-  // =========================================================================
-  // Bülten (Kayıtlar Yalnızca Editör Görünümündeki Bülten Listesine Düşer)
-  // =========================================================================
-  const newsletterForm = document.getElementById('newsletterForm');
-  const doubleOptInBox = document.getElementById('doubleOptInBox');
-  const newsletterMessage = document.getElementById('newsletterMessage');
-
-  function restoreNewsletterUi() {
-    const saved = loadJsonStorage(NEWSLETTER_STATE_KEY, null);
-    if (saved && saved.status === 'confirmed') {
-      newsletterMessage.textContent = `${saved.email} adresi için haftalık bülten aboneliği aktif.`;
-      doubleOptInBox.classList.remove('hidden');
-      document.getElementById('confirmDoubleOptInBtn').classList.add('hidden');
-    }
-  }
-
-  function recordSubscriberInEditorList(email, status) {
-    const normalized = email.toLowerCase();
-    const existingIdx = editorSubscribers.findIndex((s) => s.email.toLowerCase() === normalized);
-    const entry = {
-      email: normalized,
-      status,
-      updatedAt: new Date().toISOString().slice(0, 10)
-    };
-    if (existingIdx !== -1) {
-      editorSubscribers[existingIdx] = entry;
-    } else {
-      editorSubscribers.unshift(entry);
-    }
-    localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(editorSubscribers));
-  }
-
-  newsletterForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const honeypot = document.getElementById('newsletterCompany').value.trim();
-    if (honeypot) {
-      newsletterMessage.textContent = 'Onay adımı gönderildi.';
-      return;
-    }
-
-    const email = document.getElementById('newsletterEmail').value.trim();
-    const consent = document.getElementById('newsletterConsent').checked;
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newsletterMessage.textContent = 'Lütfen geçerli bir e-posta adresi girin.';
-      return;
-    }
-    if (!consent) {
-      newsletterMessage.textContent = 'Bülten gönderimi için açık rıza onay kutusunu işaretleyin.';
-      return;
-    }
-
-    localStorage.setItem(
-      NEWSLETTER_STATE_KEY,
-      JSON.stringify({ email, status: 'pending_double_opt_in' })
-    );
-    recordSubscriberInEditorList(email, 'Onay Bekliyor');
-
-    try {
-      await fetch('/api/newsletter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, doubleOptInPending: true })
-      });
-    } catch (_) {}
-
-    newsletterMessage.textContent = `${email} için çift onay adımı hazırlandı. Aşağıdan onaylayabilirsiniz.`;
-    doubleOptInBox.classList.remove('hidden');
-    document.getElementById('confirmDoubleOptInBtn').classList.remove('hidden');
-  });
-
-  document.getElementById('confirmDoubleOptInBtn').addEventListener('click', () => {
-    const saved = loadJsonStorage(NEWSLETTER_STATE_KEY, null);
-    if (!saved) return;
-    saved.status = 'confirmed';
-    localStorage.setItem(NEWSLETTER_STATE_KEY, JSON.stringify(saved));
-    recordSubscriberInEditorList(saved.email, 'Onaylı');
-    newsletterMessage.textContent = `${saved.email} adresi haftalık özet bültenine onaylandı.`;
-    document.getElementById('confirmDoubleOptInBtn').classList.add('hidden');
-    showToast('Bülten aboneliğiniz onaylandı.');
-  });
-
-  document.getElementById('unsubscribeDemoBtn').addEventListener('click', () => {
-    const saved = loadJsonStorage(NEWSLETTER_STATE_KEY, null);
-    if (saved?.email) {
-      editorSubscribers = editorSubscribers.filter(
-        (s) => s.email.toLowerCase() !== saved.email.toLowerCase()
-      );
-      localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(editorSubscribers));
-    }
-    localStorage.removeItem(NEWSLETTER_STATE_KEY);
-    doubleOptInBox.classList.add('hidden');
-    newsletterForm.reset();
-    newsletterMessage.textContent = 'Tek tıkla bülten çıkışınız tamamlandı.';
-    showToast('Bülten aboneliğinden çıkıldı.');
   });
 
   // =========================================================================
@@ -921,9 +779,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // =========================================================================
-  // Yönetim Paneli: Bülten Seçkisi, Sadece Editöre Özel Abone Listesi, Onay & Kayıt
+  // Geniş Yönetim Paneli: Yazı Ekleme, Düzenleme, Silme ve Onay Kuyruğu
   // =========================================================================
   const adminDialog = document.getElementById('adminDialog');
+  const adminRecordForm = document.getElementById('adminRecordForm');
+  const adminEditIdInput = document.getElementById('adminEditId');
+  const cancelAdminEditBtn = document.getElementById('cancelAdminEditBtn');
+  const saveRecordBtn = document.getElementById('saveRecordBtn');
 
   document.getElementById('footerAdminLink').addEventListener('click', () => {
     openDialog(adminDialog);
@@ -934,63 +796,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pass === ADMIN_PASSCODE) {
       document.getElementById('adminGate').classList.add('hidden');
       document.getElementById('adminConsole').classList.remove('hidden');
-      renderDigestEditor();
-      renderSubscribersForEditor();
       renderPendingQueue();
+      renderAdminRecordsList();
     } else {
       showToast('Yönetici parolası hatalı.');
     }
   });
-
-  function renderDigestEditor() {
-    const headlineInput = document.getElementById('digestHeadline');
-    const checklist = document.getElementById('digestChecklist');
-    headlineInput.value = weeklyDigest.headline || '';
-
-    checklist.innerHTML = records
-      .map((rec) => {
-        const checked = (weeklyDigest.selectedIds || []).includes(rec.id) ? 'checked' : '';
-        return `
-          <label class="consent-check dark-check">
-            <input type="checkbox" class="js-digest-item" value="${escapeHtml(rec.id)}" ${checked}>
-            <span><strong>${escapeHtml(rec.title)}</strong> (${escapeHtml(formatDateTr(rec.date))})</span>
-          </label>
-        `;
-      })
-      .join('');
-  }
-
-  document.getElementById('digestSelectionForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const headline = document.getElementById('digestHeadline').value.trim();
-    const selectedIds = Array.from(document.querySelectorAll('.js-digest-item:checked')).map(
-      (cb) => cb.value
-    );
-    weeklyDigest = { headline, selectedIds };
-    localStorage.setItem(DIGEST_STORAGE_KEY, JSON.stringify(weeklyDigest));
-    applyDigestToNewsletterBanner();
-    showToast('Haftalık bülten seçkisi kaydedildi.');
-  });
-
-  function renderSubscribersForEditor() {
-    const box = document.getElementById('subscriberListBox');
-    if (!box) return;
-    if (!editorSubscribers.length) {
-      box.innerHTML = '<p>Henüz kayıtlı bülten abonesi bulunmuyor.</p>';
-      return;
-    }
-
-    box.innerHTML = editorSubscribers
-      .map(
-        (sub) => `
-        <div class="subscriber-row">
-          <span><strong>${escapeHtml(sub.email)}</strong></span>
-          <span>${escapeHtml(sub.status)} • ${escapeHtml(sub.updatedAt)}</span>
-        </div>
-      `
-      )
-      .join('');
-  }
 
   function renderPendingQueue() {
     const box = document.getElementById('pendingQueueList');
@@ -1003,13 +814,13 @@ document.addEventListener('DOMContentLoaded', () => {
       .map(
         (sub) => `
         <div class="pending-item">
-          <div>
+          <div class="admin-record-info">
             <strong>${escapeHtml(sub.title)}</strong>
-            <div>${escapeHtml(sub.name)} (${escapeHtml(sub.institution)}) • Kaynak: ${escapeHtml(sub.sourceNote)}</div>
+            <span>${escapeHtml(sub.name)} (${escapeHtml(sub.institution)}) • Kaynak: ${escapeHtml(sub.sourceNote)}</span>
           </div>
-          <div>
-            <button type="button" class="btn-primary js-approve-sub" data-id="${escapeHtml(sub.id)}">Onayla ve Yayımla</button>
-            <button type="button" class="btn-ghost js-reject-sub" data-id="${escapeHtml(sub.id)}">Reddet</button>
+          <div class="admin-record-btns">
+            <button type="button" class="btn-primary js-approve-sub" data-id="${escapeHtml(sub.id)}">Onayla</button>
+            <button type="button" class="btn-danger-ghost js-reject-sub" data-id="${escapeHtml(sub.id)}">Reddet</button>
           </div>
         </div>
       `
@@ -1028,7 +839,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const newRec = {
         id: `ak-${Date.now()}`,
         type: sub.type,
-        genre: sub.type === 'makale' ? 'Analiz / Görüş' : 'Haber / Duyuru',
         featured: false,
         title: sub.title,
         summary: isUrl ? `${sub.sourceNote} — Resmî bağlantı kaydı.` : sub.textOrUrl,
@@ -1048,8 +858,8 @@ document.addEventListener('DOMContentLoaded', () => {
       saveArchive();
       localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(pendingSubmissions));
       populateFilterOptions();
-      renderDigestEditor();
       renderPendingQueue();
+      renderAdminRecordsList();
       renderArchive();
       showToast('Gönderim onaylandı ve arşive eklendi.');
     }
@@ -1062,8 +872,80 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.getElementById('adminRecordForm').addEventListener('submit', (e) => {
+  function renderAdminRecordsList() {
+    const listBox = document.getElementById('adminRecordsList');
+    if (!listBox) return;
+
+    if (records.length === 0) {
+      listBox.innerHTML = '<p>Henüz yayımlanmış kayıt yok.</p>';
+      return;
+    }
+
+    listBox.innerHTML = records
+      .map(
+        (rec) => `
+        <div class="admin-record-row">
+          <div class="admin-record-info">
+            <strong>${escapeHtml(rec.title)}</strong>
+            <span>${escapeHtml(TYPE_LABELS[rec.type] || rec.type)} • ${escapeHtml(formatDateTr(rec.date))}</span>
+          </div>
+          <div class="admin-record-btns">
+            <button type="button" class="btn-secondary js-edit-record" data-id="${escapeHtml(rec.id)}">Düzenle</button>
+            <button type="button" class="btn-danger-ghost js-delete-record" data-id="${escapeHtml(rec.id)}">Sil</button>
+          </div>
+        </div>
+      `
+      )
+      .join('');
+  }
+
+  document.getElementById('adminRecordsList').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('.js-edit-record');
+    const delBtn = e.target.closest('.js-delete-record');
+
+    if (editBtn) {
+      const rec = records.find((r) => r.id === editBtn.dataset.id);
+      if (!rec) return;
+      adminEditIdInput.value = rec.id;
+      document.getElementById('admTitle').value = rec.title || '';
+      document.getElementById('admCategory').value = rec.type || 'makale';
+      document.getElementById('admDate').value = rec.date || '';
+      document.getElementById('admAuthor').value = rec.author || '';
+      document.getElementById('admSource').value = rec.source || '';
+      document.getElementById('admTopic').value = rec.topic || '';
+      document.getElementById('admDocMeta').value = rec.docMeta || '';
+      document.getElementById('admSourceUrl').value = rec.sourceUrl || '';
+      document.getElementById('admSummary').value = rec.summary || '';
+      document.getElementById('admBody').value = Array.isArray(rec.body) ? rec.body.join('\n\n') : (rec.body || '');
+      document.getElementById('admFeatured').checked = Boolean(rec.featured);
+
+      saveRecordBtn.textContent = 'Değişiklikleri Güncelle';
+      cancelAdminEditBtn.classList.remove('hidden');
+      document.getElementById('admTitle').focus();
+    }
+
+    if (delBtn) {
+      records = records.filter((r) => r.id !== delBtn.dataset.id);
+      saveArchive();
+      populateFilterOptions();
+      renderAdminRecordsList();
+      renderArchive();
+      showToast('Kayıt arşivden silindi.');
+    }
+  });
+
+  function resetAdminForm() {
+    adminRecordForm.reset();
+    adminEditIdInput.value = '';
+    saveRecordBtn.textContent = 'Arşive Kaydet';
+    cancelAdminEditBtn.classList.add('hidden');
+  }
+
+  cancelAdminEditBtn.addEventListener('click', resetAdminForm);
+
+  adminRecordForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    const editId = adminEditIdInput.value;
     const isFeatured = document.getElementById('admFeatured').checked;
     if (isFeatured) {
       records.forEach((r) => {
@@ -1073,7 +955,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const title = document.getElementById('admTitle').value.trim();
     const type = document.getElementById('admCategory').value;
-    const genre = document.getElementById('admGenre').value;
     const author = document.getElementById('admAuthor').value.trim();
     const source = document.getElementById('admSource').value.trim();
     const date = document.getElementById('admDate').value || new Date().toISOString().slice(0, 10);
@@ -1082,33 +963,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const sourceUrl = document.getElementById('admSourceUrl').value.trim();
     const summary = document.getElementById('admSummary').value.trim();
     const bodyText = document.getElementById('admBody').value.trim();
+    const todayIso = new Date().toISOString().slice(0, 10);
 
-    const newItem = {
-      id: `ak-${Date.now()}`,
-      type,
-      genre,
-      featured: isFeatured,
-      title,
-      summary,
-      body: bodyText.split(/\n+/).filter(Boolean),
-      author,
-      source,
-      date,
-      updatedAt: new Date().toISOString().slice(0, 10),
-      topic,
-      docMeta,
-      sourceUrl,
-      isExternalLink: type === 'baglanti',
-      apa: `${author}. (${date.slice(0, 4)}). ${title}. ${source}. AkademikKapital.`
-    };
+    if (editId) {
+      const idx = records.findIndex((r) => r.id === editId);
+      if (idx !== -1) {
+        records[idx] = {
+          ...records[idx],
+          type,
+          featured: isFeatured,
+          title,
+          summary,
+          body: bodyText.split(/\n+/).filter(Boolean),
+          author,
+          source,
+          date,
+          updatedAt: todayIso,
+          topic,
+          docMeta,
+          sourceUrl,
+          isExternalLink: type === 'baglanti',
+          apa: `${author}. (${date.slice(0, 4)}). ${title}. ${source}. AkademikKapital.`
+        };
+      }
+      showToast('Kayıt güncellendi.');
+    } else {
+      const newItem = {
+        id: `ak-${Date.now()}`,
+        type,
+        featured: isFeatured,
+        title,
+        summary,
+        body: bodyText.split(/\n+/).filter(Boolean),
+        author,
+        source,
+        date,
+        updatedAt: todayIso,
+        topic,
+        docMeta,
+        sourceUrl,
+        isExternalLink: type === 'baglanti',
+        apa: `${author}. (${date.slice(0, 4)}). ${title}. ${source}. AkademikKapital.`
+      };
+      records.unshift(newItem);
+      showToast('Yeni kayıt arşive eklendi.');
+    }
 
-    records.unshift(newItem);
     saveArchive();
     populateFilterOptions();
-    renderDigestEditor();
+    renderAdminRecordsList();
     renderArchive();
-    e.target.reset();
-    showToast('Yeni kayıt arşive eklendi.');
+    resetAdminForm();
   });
 
   document.getElementById('exportJsonBtn').addEventListener('click', () => {
