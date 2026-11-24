@@ -3,13 +3,14 @@
  * Özellikler:
  * - Tek veri kaynağı (JSON verisi + /api/archive + localStorage)
  * - Sıralama: Yalnızca Yeniden Eskiye (newest) ve Eskiden Yeniye (oldest)
- * - Geniş Yönetim Paneli: Yazı ekleme, düzenleme, silme ve editör onay kuyruğu ("Yayın Niteliği" kaldırıldı)
- * - Bülten aboneliği kaldırıldı; sade açık erişim arşiv kurgusu
+ * - Geniş Yönetim Paneli: Yazı ekleme, düzenleme, silme, görsel yükleme ve editör onay kuyruğu
+ * - Dinamik Sosyal Bağlantılar: X (Twitter), Threads, Telegram, WhatsApp, Instagram, YouTube ve özel platform ekleme
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  const ARCHIVE_STORAGE_KEY = 'ak_archive_records_v5';
-  const PENDING_STORAGE_KEY = 'ak_pending_submissions_v5';
+  const ARCHIVE_STORAGE_KEY = 'ak_archive_records_v6';
+  const PENDING_STORAGE_KEY = 'ak_pending_submissions_v6';
+  const SOCIAL_STORAGE_KEY = 'ak_social_links_v6';
   const ADMIN_PASSCODE = 'akademik2026';
   const PAGE_SIZE = 6;
 
@@ -20,6 +21,25 @@ document.addEventListener('DOMContentLoaded', () => {
     dokuman: 'Doküman Arşivi',
     baglanti: 'Dış Bağlantılar'
   };
+
+  const PLATFORM_LABELS = {
+    whatsapp: 'WhatsApp',
+    telegram: 'Telegram',
+    instagram: 'Instagram',
+    youtube: 'YouTube',
+    threads: 'Threads',
+    x: 'X (Twitter)',
+    custom: 'Bağlantı'
+  };
+
+  const DEFAULT_SOCIAL_LINKS = [
+    { id: 'soc-whatsapp', platform: 'whatsapp', label: 'WhatsApp', url: 'https://whatsapp.com/channel/0029Vb6' },
+    { id: 'soc-telegram', platform: 'telegram', label: 'Telegram', url: 'https://t.me/akademikkapital' },
+    { id: 'soc-instagram', platform: 'instagram', label: 'Instagram', url: 'https://instagram.com/akademikkapital' },
+    { id: 'soc-youtube', platform: 'youtube', label: 'YouTube', url: 'https://youtube.com/@akademikkapital' },
+    { id: 'soc-threads', platform: 'threads', label: 'Threads', url: 'https://www.threads.net/@akademikkapital' },
+    { id: 'soc-x', platform: 'x', label: 'X (Twitter)', url: 'https://x.com/akademikkapital' }
+  ];
 
   // Tek veri kaynağı (JSON yapısı)
   const INITIAL_ARCHIVE_JSON = [
@@ -33,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Yükseköğretim sisteminde program çeşitliliği, kalite güvencesi ve araştırma kapasitesi verileri her dönem yeniden değerlendirilmektedir.',
         'Bu kayıtta resmî kurum tarafından paylaşılan verilerin temel başlıkları özetlenmiş ve doğrulama için birincil kaynağa bağlantı verilmiştir.'
       ],
+      imageUrl: '',
       author: 'Yükseköğretim Kurulu (Veri Özeti)',
       source: 'YÖK Resmî Yayınlar',
       date: '2026-11-18',
@@ -53,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Modern üniversite yönetişimi; artan öğrenci sayısı, dijital kampüs uygulamaları ve uluslararası görünürlük hedefleri arasında denge kurmaya çalışmaktadır.',
         'Kamusal bir hizmet olarak yükseköğretimin temel ölçütü yalnızca kısa vadeli nicel çıktılar değil, uzun vadeli bilgi üretimi ve kurumsal güven olmalıdır.'
       ],
+      imageUrl: '',
       author: 'AkademikKapital Yayın Kurulu',
       source: 'AkademikKapital Analiz',
       date: '2026-11-14',
@@ -72,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body: [
         'Adayları ve akademik birimleri doğrudan ilgilendiren güncel sınav ve başvuru tarihleri için resmî duyuru metni esas alınmalıdır.'
       ],
+      imageUrl: '',
       author: 'ÖSYM Duyuru Özeti',
       source: 'ÖSYM Resmî Sitesi',
       date: '2026-11-10',
@@ -91,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body: [
         'Yükseköğretim programlarının tarihsel kontenjan ve yerleşen verilerine açık erişim sağlayan dış kurumsal veri portalıdır.'
       ],
+      imageUrl: '',
       author: 'Dış Kaynak Dizini',
       source: 'YÖK Atlas',
       date: '2026-10-28',
@@ -110,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body: [
         'Temel ve uygulamalı bilimlerde erken kariyer aşamasındaki araştırmacılar için açılan çağrılarda başvuru takvimi ve ev sahibi kurum koşulları öne çıkmaktadır.'
       ],
+      imageUrl: '',
       author: 'AkademikKapital Haber Masası',
       source: 'Kurumsal Çağrı Özeti',
       date: '2026-10-19',
@@ -129,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body: [
         'İç kalite güvencesi süreçleri; misyon ve stratejik amaçlarla uyumlu ölçülebilir kanıtlara dayanmalıdır.'
       ],
+      imageUrl: '',
       author: 'Kalite İzleme Notu',
       source: 'YÖKAK Açık Kaynak',
       date: '2025-12-15',
@@ -144,6 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Durum
   let records = [];
   let pendingSubmissions = [];
+  let socialLinks = [];
+  let pendingUploadedImageDataUrl = '';
 
   let state = {
     tab: 'tumu',
@@ -171,6 +199,51 @@ document.addEventListener('DOMContentLoaded', () => {
   const archiveView = document.getElementById('archiveView');
   const aboutView = document.getElementById('aboutView');
   const detailView = document.getElementById('detailView');
+
+  // =========================================================================
+  // Sosyal Medya İkonları (Platformlarla Birebir Eşleşen SVG'ler)
+  // =========================================================================
+  function renderPlatformIcon(platform) {
+    switch (platform) {
+      case 'whatsapp':
+        return `<svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M20.52 3.48A11.82 11.82 0 0 0 12.06 0C5.49 0 .14 5.35.14 11.92c0 2.1.55 4.15 1.6 5.96L0 24l6.29-1.65a11.88 11.88 0 0 0 5.77 1.47h.01c6.57 0 11.92-5.35 11.92-11.92 0-3.18-1.24-6.18-3.47-8.42zm-8.45 18.33h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.73.98 1-3.64-.24-.37a9.85 9.85 0 0 1-1.51-5.23c0-5.45 4.44-9.89 9.9-9.89 2.64 0 5.12 1.03 6.99 2.9a9.83 9.83 0 0 1 2.89 7c0 5.45-4.44 9.89-9.9 9.89zm5.42-7.41c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.49s1.07 2.89 1.22 3.09c.15.2 2.11 3.22 5.11 4.52.71.31 1.27.49 1.7.63.72.23 1.37.2 1.89.12.58-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z"/></svg>`;
+      case 'telegram':
+        return `<svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M23.91 3.79L20.3 20.84c-.25 1.21-.98 1.5-2 .94l-5.5-4.07-2.66 2.57c-.3.3-.55.55-1.12.55l.4-5.64 10.28-9.28c.45-.4-.1-.62-.69-.22L6.52 13.32 1.05 11.61c-1.19-.37-1.21-1.19.25-1.76L22.39 1.59c.99-.37 1.86.22 1.52 2.2z"/></svg>`;
+      case 'instagram':
+        return `<svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23a3.72 3.72 0 0 1-.9 1.38 3.72 3.72 0 0 1-1.38.9c-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16zM12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63a5.88 5.88 0 0 0-2.12 1.38A5.88 5.88 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.39 2.12.66.67 1.33 1.08 2.12 1.39.76.3 1.64.5 2.91.56 1.28.06 1.69.07 4.95.07s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56.79-.31 1.46-.72 2.12-1.39.67-.66 1.08-1.33 1.39-2.12.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.88 5.88 0 0 0-1.39-2.12A5.88 5.88 0 0 0 19.86.63c-.76-.3-1.64-.5-2.91-.56C15.67.01 15.26 0 12 0zm0 5.84A6.16 6.16 0 1 0 18.16 12 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 16 12a4 4 0 0 1-4 4zm6.41-11.85a1.44 1.44 0 1 0 1.44 1.44 1.44 1.44 0 0 0-1.44-1.44z"/></svg>`;
+      case 'youtube':
+        return `<svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.12-2.12C19.5 3.57 12 3.57 12 3.57s-7.5 0-9.38.51A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.12 2.12c1.88.51 9.38.51 9.38.51s7.5 0 9.38-.51a3 3 0 0 0 2.12-2.12A31.3 31.3 0 0 0 24 12a31.3 31.3 0 0 0-.5-5.8zM9.6 15.6V8.4l6.24 3.6-6.24 3.6z"/></svg>`;
+      case 'threads':
+        return `<svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19.46 10.45a8.44 8.44 0 0 0-.42-.97c-.56-1.15-1.5-2.06-2.72-2.62-1.15-.53-2.52-.78-4.08-.74-1.9.05-3.52.66-4.7 1.77C6.75 8.73 6.13 10.22 6.08 12c-.05 1.78.52 3.31 1.66 4.43 1.15 1.12 2.75 1.7 4.65 1.67 1.64-.03 3.06-.49 4.13-1.35.93-.75 1.54-1.76 1.77-2.93h-2.15c-.18.67-.58 1.22-1.17 1.62-.71.48-1.69.72-2.83.74-1.31.02-2.36-.34-3.12-1.08-.72-.7-1.08-1.68-1.05-2.85h9.65c.03-.38.04-.75.03-1.13-.02-.6-.12-1.16-.29-1.67zm-8.65.13c.13-.95.55-1.69 1.24-2.15.63-.42 1.44-.62 2.38-.6 1.03.02 1.85.26 2.43.7.51.39.83.93.95 1.59h-6.24z"/></svg>`;
+      case 'x':
+        return `<svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`;
+      default:
+        return `<svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M10.59 13.41c.41.41.41 1.09 0 1.5s-1.09.41-1.5 0a3.99 3.99 0 0 1 0-5.66l2.83-2.83a4.008 4.008 0 0 1 5.66 0 3.99 3.99 0 0 1 0 5.66l-1.06 1.06a1 1 0 0 1-1.41-1.41l1.06-1.06a2 2 0 0 0 0-2.83 2 2 0 0 0-2.83 0l-2.83 2.83a2 2 0 0 0 0 2.83zm2.82-2.82c.41-.41 1.09-.41 1.5 0a3.99 3.99 0 0 1 0 5.66l-2.83 2.83a4.008 4.008 0 0 1-5.66 0 3.99 3.99 0 0 1 0-5.66l1.06-1.06a1 1 0 0 1 1.41 1.41l-1.06 1.06a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0l2.83-2.83a2 2 0 0 0 0-2.83c-.41-.41-.41-1.09 0-1.5z"/></svg>`;
+    }
+  }
+
+  function renderSocialNavs() {
+    const topNav = document.getElementById('topSocialNav');
+    const footerNav = document.getElementById('footerSocialNav');
+
+    const safeLinks = socialLinks.filter((s) => /^https?:\/\//i.test(s.url));
+
+    topNav.innerHTML = safeLinks
+      .map(
+        (s) =>
+          `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(s.label)}" title="${escapeHtml(s.label)}">${renderPlatformIcon(s.platform)}</a>`
+      )
+      .join('');
+
+    footerNav.innerHTML =
+      safeLinks
+        .map(
+          (s) =>
+            `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(s.label)}" title="${escapeHtml(s.label)}">${renderPlatformIcon(s.platform)}</a>`
+        )
+        .join('') +
+      `<a href="feed.xml" id="rssFollowLink" class="rss-link">RSS ile takip et</a>`;
+  }
 
   // =========================================================================
   // Türkçe Karakter Duyarsız Normalizasyon & Eşleşme Vurgulama
@@ -346,6 +419,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function initApp() {
     readStateFromUrl();
     pendingSubmissions = loadJsonStorage(PENDING_STORAGE_KEY, []);
+    socialLinks = loadJsonStorage(SOCIAL_STORAGE_KEY, DEFAULT_SOCIAL_LINKS);
+    renderSocialNavs();
 
     setStatus('loading', 'Arşiv kayıtları yükleniyor...');
     try {
@@ -486,6 +561,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleHtml = highlightTrMatches(item.title, state.q);
     const summaryHtml = highlightTrMatches(item.summary, state.q);
 
+    const imageBlock = item.imageUrl
+      ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.title)}" class="card-media-thumb" loading="lazy">`
+      : '';
+
     const docInfoBlock =
       item.docMeta || item.sourceUrl
         ? `<div class="card-doc-meta">
@@ -502,6 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     return `
       <article class="archive-card ${isFeatured ? 'archive-card--featured' : ''}" data-id="${escapeHtml(item.id)}">
+        ${imageBlock}
         <div class="card-meta-top">
           <span class="type-badge">${escapeHtml(typeLabel)}</span>
           ${item.topic ? `<span>#${escapeHtml(item.topic)}</span>` : ''}
@@ -623,6 +703,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('detailReadTime').textContent = estimateReadTime(item);
     document.getElementById('detailPermalink').textContent = permalink;
 
+    const figEl = document.getElementById('detailImageFigure');
+    const imgEl = document.getElementById('detailImage');
+    if (item.imageUrl) {
+      imgEl.src = item.imageUrl;
+      imgEl.alt = item.title;
+      figEl.classList.remove('hidden');
+    } else {
+      imgEl.src = '';
+      imgEl.alt = '';
+      figEl.classList.add('hidden');
+    }
+
     const paragraphs = Array.isArray(item.body) && item.body.length > 0
       ? item.body
       : [item.summary || ''];
@@ -648,6 +740,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ogTitle').setAttribute('content', item.title);
     document.getElementById('ogDesc').setAttribute('content', item.summary || item.title);
     document.getElementById('ogUrl').setAttribute('content', permalink);
+    document.getElementById('twTitle').setAttribute('content', item.title);
+    document.getElementById('twDesc').setAttribute('content', item.summary || item.title);
 
     if (shouldSync) syncUrlState();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -779,11 +873,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // =========================================================================
-  // Geniş Yönetim Paneli: Yazı Ekleme, Düzenleme, Silme ve Onay Kuyruğu
+  // Geniş Yönetim Paneli: Yazı Ekleme, Görsel Yükleme, Sosyal Bağlantılar & Kuyruk
   // =========================================================================
   const adminDialog = document.getElementById('adminDialog');
   const adminRecordForm = document.getElementById('adminRecordForm');
   const adminEditIdInput = document.getElementById('adminEditId');
+  const admExistingImageInput = document.getElementById('admExistingImage');
+  const admImageFileInput = document.getElementById('admImageFile');
+  const admImagePreviewWrap = document.getElementById('admImagePreviewWrap');
+  const admImagePreview = document.getElementById('admImagePreview');
+  const removeAdmImageBtn = document.getElementById('removeAdmImageBtn');
   const cancelAdminEditBtn = document.getElementById('cancelAdminEditBtn');
   const saveRecordBtn = document.getElementById('saveRecordBtn');
 
@@ -796,6 +895,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pass === ADMIN_PASSCODE) {
       document.getElementById('adminGate').classList.add('hidden');
       document.getElementById('adminConsole').classList.remove('hidden');
+      renderAdminSocialList();
       renderPendingQueue();
       renderAdminRecordsList();
     } else {
@@ -803,6 +903,122 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Görsel Yükleme ve Önizleme
+  admImageFileInput.addEventListener('change', () => {
+    const file = admImageFileInput.files && admImageFileInput.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Lütfen geçerli bir resim dosyası seçin.');
+      admImageFileInput.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      pendingUploadedImageDataUrl = dataUrl;
+      admImagePreview.src = dataUrl;
+      admImagePreviewWrap.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removeAdmImageBtn.addEventListener('click', () => {
+    pendingUploadedImageDataUrl = '';
+    admExistingImageInput.value = '';
+    admImageFileInput.value = '';
+    admImagePreview.src = '';
+    admImagePreviewWrap.classList.add('hidden');
+  });
+
+  function setImagePreviewForEdit(imageUrl) {
+    pendingUploadedImageDataUrl = '';
+    admExistingImageInput.value = imageUrl || '';
+    admImageFileInput.value = '';
+    if (imageUrl) {
+      admImagePreview.src = imageUrl;
+      admImagePreviewWrap.classList.remove('hidden');
+    } else {
+      admImagePreview.src = '';
+      admImagePreviewWrap.classList.add('hidden');
+    }
+  }
+
+  // Sosyal Medya / Bağlantı Ekleme ve Yönetme
+  const adminSocialForm = document.getElementById('adminSocialForm');
+  const adminSocialList = document.getElementById('adminSocialList');
+
+  function renderAdminSocialList() {
+    if (!socialLinks.length) {
+      adminSocialList.innerHTML = '<p>Henüz sosyal bağlantı eklenmemiş.</p>';
+      return;
+    }
+
+    adminSocialList.innerHTML = socialLinks
+      .map(
+        (s) => `
+        <div class="social-manage-row">
+          <div class="admin-record-info">
+            <strong>${escapeHtml(s.label)}</strong>
+            <span>${escapeHtml(s.url)}</span>
+          </div>
+          <div class="admin-record-btns">
+            <button type="button" class="btn-danger-ghost js-delete-social" data-id="${escapeHtml(s.id)}">Sil</button>
+          </div>
+        </div>
+      `
+      )
+      .join('');
+  }
+
+  adminSocialForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const platform = document.getElementById('socPlatformSelect').value;
+    const customLabel = document.getElementById('socCustomLabel').value.trim();
+    const url = document.getElementById('socUrlInput').value.trim();
+
+    if (!/^https?:\/\//i.test(url)) {
+      showToast('Lütfen http:// veya https:// ile başlayan geçerli bir bağlantı girin.');
+      return;
+    }
+
+    const label = customLabel || PLATFORM_LABELS[platform] || 'Bağlantı';
+    const existingIdx = socialLinks.findIndex((s) => s.platform === platform && platform !== 'custom');
+
+    if (existingIdx !== -1) {
+      socialLinks[existingIdx] = {
+        ...socialLinks[existingIdx],
+        label,
+        url
+      };
+    } else {
+      socialLinks.push({
+        id: `soc-${Date.now()}`,
+        platform,
+        label,
+        url
+      });
+    }
+
+    localStorage.setItem(SOCIAL_STORAGE_KEY, JSON.stringify(socialLinks));
+    renderSocialNavs();
+    renderAdminSocialList();
+    adminSocialForm.reset();
+    showToast(`${label} bağlantısı kaydedildi.`);
+  });
+
+  adminSocialList.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('.js-delete-social');
+    if (!delBtn) return;
+    socialLinks = socialLinks.filter((s) => s.id !== delBtn.dataset.id);
+    localStorage.setItem(SOCIAL_STORAGE_KEY, JSON.stringify(socialLinks));
+    renderSocialNavs();
+    renderAdminSocialList();
+    showToast('Bağlantı kaldırıldı.');
+  });
+
+  // Onay Kuyruğu
   function renderPendingQueue() {
     const box = document.getElementById('pendingQueueList');
     if (pendingSubmissions.length === 0) {
@@ -843,6 +1059,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title: sub.title,
         summary: isUrl ? `${sub.sourceNote} — Resmî bağlantı kaydı.` : sub.textOrUrl,
         body: [isUrl ? 'Resmî kaynak bağlantısı üzerinden erişilebilir.' : sub.textOrUrl],
+        imageUrl: '',
         author: `${sub.name} (${sub.institution})`,
         source: sub.sourceNote,
         date: new Date().toISOString().slice(0, 10),
@@ -872,6 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Yayımlanmış Kayıtları Yönet
   function renderAdminRecordsList() {
     const listBox = document.getElementById('adminRecordsList');
     if (!listBox) return;
@@ -918,6 +1136,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('admSummary').value = rec.summary || '';
       document.getElementById('admBody').value = Array.isArray(rec.body) ? rec.body.join('\n\n') : (rec.body || '');
       document.getElementById('admFeatured').checked = Boolean(rec.featured);
+      setImagePreviewForEdit(rec.imageUrl || '');
 
       saveRecordBtn.textContent = 'Değişiklikleri Güncelle';
       cancelAdminEditBtn.classList.remove('hidden');
@@ -937,6 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function resetAdminForm() {
     adminRecordForm.reset();
     adminEditIdInput.value = '';
+    setImagePreviewForEdit('');
     saveRecordBtn.textContent = 'Arşive Kaydet';
     cancelAdminEditBtn.classList.add('hidden');
   }
@@ -963,6 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sourceUrl = document.getElementById('admSourceUrl').value.trim();
     const summary = document.getElementById('admSummary').value.trim();
     const bodyText = document.getElementById('admBody').value.trim();
+    const finalImageUrl = pendingUploadedImageDataUrl || admExistingImageInput.value || '';
     const todayIso = new Date().toISOString().slice(0, 10);
 
     if (editId) {
@@ -975,6 +1196,7 @@ document.addEventListener('DOMContentLoaded', () => {
           title,
           summary,
           body: bodyText.split(/\n+/).filter(Boolean),
+          imageUrl: finalImageUrl,
           author,
           source,
           date,
@@ -995,6 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title,
         summary,
         body: bodyText.split(/\n+/).filter(Boolean),
+        imageUrl: finalImageUrl,
         author,
         source,
         date,
