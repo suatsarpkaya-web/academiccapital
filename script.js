@@ -2,19 +2,17 @@
  * AkademikKapital — Yükseköğretim Yayın ve Veri Arşivi (Vanilla JS)
  * Özellikler:
  * - Tek veri kaynağı (JSON verisi + /api/archive + localStorage)
- * - Türkçe karakter duyarsız anlık arama (ı/İ/ğ/ü/ş/ö/ç) + eşleşme vurgulama
- * - URL durum senkronizasyonu (?q=&tur=&sira=) ve "/" tuşu arama kısayolu
- * - Yıl ve konu etiketi filtreleri + "Daha fazla göster" (sonsuz kaydırma yok)
- * - En üstte tek "Öne Çıkan" içerik + Doküman türü/boyutu ve dış bağlantı simgesi
- * - Tek sütun detay görünümü, kalıcı URL, son güncelleme, yazdır, paylaş, APA künye kopyalama
- * - Çift onaylı (double-opt-in) + honeypot + KVKK onaylı bülten ve editör onaylı İçerik Gönder akışı
- * - Backspace uzun basma tarayıcı geri gitme koruması
+ * - Sıralama: Yalnızca Yeniden Eskiye (newest) ve Eskiden Yeniye (oldest)
+ * - Editör bülten seçkisi hazırlama ve sadece editöre açık bülten abone listesi
+ * - Türkçe karakter duyarsız arama + vurgulama, URL senkronizasyonu, tek sütun detay ve APA künye
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  const ARCHIVE_STORAGE_KEY = 'ak_archive_records_v3';
-  const PENDING_STORAGE_KEY = 'ak_pending_submissions_v3';
-  const NEWSLETTER_STORAGE_KEY = 'ak_newsletter_state_v3';
+  const ARCHIVE_STORAGE_KEY = 'ak_archive_records_v4';
+  const PENDING_STORAGE_KEY = 'ak_pending_submissions_v4';
+  const NEWSLETTER_STATE_KEY = 'ak_newsletter_state_v4';
+  const SUBSCRIBERS_STORAGE_KEY = 'ak_editor_subscribers_v4';
+  const DIGEST_STORAGE_KEY = 'ak_weekly_digest_v4';
   const ADMIN_PASSCODE = 'akademik2026';
   const PAGE_SIZE = 6;
 
@@ -26,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     baglanti: 'Dış Bağlantılar'
   };
 
-  // Tek veri kaynağı (JSON yapısında)
+  // Tek veri kaynağı (JSON yapısı)
   const INITIAL_ARCHIVE_JSON = [
     {
       id: 'yok-2026-rapor',
@@ -37,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
       summary: 'Üniversitelerdeki program açılışları, araştırma üniversiteleri göstergeleri ve insan kaynağı dağılımına ilişkin temel veri özeti.',
       body: [
         'Yükseköğretim sisteminde program çeşitliliği, kalite güvencesi ve araştırma kapasitesi verileri her dönem yeniden değerlendirilmektedir.',
-        'Bu kayıtta resmî kurum tarafından paylaşılan verilerin temel başlıkları özetlenmiş ve doğrulama için birincil kaynağa bağlantı verilmiştir. Telifli veya kapsamlı tablo setlerinin tamamı doğrudan kaynak üzerinden incelenebilir.'
+        'Bu kayıtta resmî kurum tarafından paylaşılan verilerin temel başlıkları özetlenmiş ve doğrulama için birincil kaynağa bağlantı verilmiştir.'
       ],
       author: 'Yükseköğretim Kurulu (Veri Özeti)',
       source: 'YÖK Resmî Yayınlar',
@@ -78,8 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
       title: '2026 Yılı Son Dönem Merkezi Sınav ve Başvuru Takvimi Güncellemesi',
       summary: 'Ölçme, Seçme ve Yerleştirme Merkezi tarafından yayımlanan güncel sınav ve tercih/başvuru tarihlerine ilişkin özet duyuru.',
       body: [
-        'Adayları ve akademik birimleri doğrudan ilgilendiren güncel sınav ve başvuru tarihleri için resmî duyuru metni esas alınmalıdır.',
-        'Başvuru süresi ve kılavuz koşullarında sonradan yapılabilecek değişiklikler için birincil kurum bağlantısı kontrol edilmelidir.'
+        'Adayları ve akademik birimleri doğrudan ilgilendiren güncel sınav ve başvuru tarihleri için resmî duyuru metni esas alınmalıdır.'
       ],
       author: 'ÖSYM Duyuru Özeti',
       source: 'ÖSYM Resmî Sitesi',
@@ -150,41 +147,27 @@ document.addEventListener('DOMContentLoaded', () => {
       sourceUrl: 'https://portal.yokak.gov.tr',
       isExternalLink: false,
       apa: 'Kalite İzleme Notu. (2025, 15 Aralık). Kurumsal akreditasyon ve iç kalite güvencesi değerlendirme notu. AkademikKapital. https://akademikkapital.vercel.app/?id=kalite-kurulu-2025'
-    },
-    {
-      id: 'mufredat-guncelleme-2025',
-      type: 'makale',
-      genre: 'Analiz / Görüş',
-      featured: false,
-      title: 'Öğretmen Yetiştirme ve Lisans Müfredatlarında Güncel Yönelimler',
-      summary: 'Uygulamalı dersler, alan bilgisi ve dijital pedagoji yetkinliklerinin lisans programlarına yansımaları üzerine analiz.',
-      body: [
-        'Program güncellemelerinde sahadaki uygulama deneyimi ile kuramsal derinliğin birlikte kurgulanması önem taşımaktadır.'
-      ],
-      author: 'Eğitim Politikaları Dosyası',
-      source: 'AkademikKapital Analiz',
-      date: '2025-09-22',
-      updatedAt: '2025-09-22',
-      topic: 'Yönetişim ve Özerklik',
-      docMeta: '',
-      sourceUrl: '',
-      isExternalLink: false,
-      apa: 'Eğitim Politikaları Dosyası. (2025, 22 Eylül). Öğretmen yetiştirme ve lisans müfredatlarında güncel yönelimler. AkademikKapital. https://akademikkapital.vercel.app/?id=mufredat-guncelleme-2025'
     }
   ];
 
   // Durum
   let records = [];
   let pendingSubmissions = [];
+  let editorSubscribers = [];
+  let weeklyDigest = {
+    headline: '',
+    selectedIds: []
+  };
+
   let state = {
     tab: 'tumu',
     q: '',
-    sira: 'newest',
+    sira: 'newest', // Sadece 'newest' (Yeniden Eskiye) ve 'oldest' (Eskiden Yeniye)
     year: 'ALL',
     topic: 'ALL',
     visibleLimit: PAGE_SIZE,
     activeDetailId: null,
-    viewMode: 'archive' // 'archive' | 'about' | 'detail'
+    viewMode: 'archive'
   };
 
   // DOM Elemanları
@@ -204,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const detailView = document.getElementById('detailView');
 
   // =========================================================================
-  // Türkçe Karakter Duyarsız Normalizasyon (ı/İ/ğ/ü/ş/ö/ç)
+  // Türkçe Karakter Duyarsız Normalizasyon & Eşleşme Vurgulama
   // =========================================================================
   function normalizeTr(str) {
     return String(str || '')
@@ -226,7 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/[\u0300-\u036f]/g, '');
   }
 
-  // Metinde Türkçe karakterden bağımsız eşleşmeleri <mark class="search-hit"> ile vurgular
   function highlightTrMatches(text, rawQuery) {
     const safeText = escapeHtml(text || '');
     const q = (rawQuery || '').trim();
@@ -235,7 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const normQuery = normalizeTr(q);
     if (!normQuery) return safeText;
 
-    // Orijinal metindeki her karakterin normalize edilmiş karşılığıyla eşleme haritası kur
     const orig = String(text || '');
     const map = [];
     let normFull = '';
@@ -254,9 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     while (searchFrom <= normFull.length - normQuery.length) {
       const idx = normFull.indexOf(normQuery, searchFrom);
       if (idx === -1) break;
-      const startOrig = map[idx];
-      const endOrig = map[idx + normQuery.length - 1] + 1;
-      ranges.push([startOrig, endOrig]);
+      ranges.push([map[idx], map[idx + normQuery.length - 1] + 1]);
       searchFrom = idx + normQuery.length;
     }
 
@@ -275,10 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Backspace Uzun Basma Koruması (Tarayıcı Geri Gitmesini Engeller)
+  // Backspace Koruması & "/" Arama Kısayolu
   // =========================================================================
   document.addEventListener('keydown', (e) => {
-    // "/" kısayolu arama kutusuna odaklanır
     if (
       e.key === '/' &&
       !e.ctrlKey &&
@@ -326,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     state.q = q;
     state.tab = TYPE_LABELS[tur] || tur === 'tumu' ? tur : 'tumu';
-    state.sira = ['newest', 'oldest', 'az'].includes(sira) ? sira : 'newest';
+    state.sira = sira === 'oldest' ? 'oldest' : 'newest';
     state.activeDetailId = id;
 
     searchInput.value = state.q;
@@ -353,8 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
       params.delete('tur');
     }
 
-    if (state.sira && state.sira !== 'newest') {
-      params.set('sira', state.sira);
+    if (state.sira === 'oldest') {
+      params.set('sira', 'oldest');
     } else {
       params.delete('sira');
     }
@@ -377,11 +355,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // =========================================================================
-  // Veri Yükleme (Yükleniyor, Hata ve Boş Durumları Destekli)
+  // Veri Yükleme & Bülten Seçkisini Yansıtma
   // =========================================================================
   async function initApp() {
     readStateFromUrl();
     pendingSubmissions = loadJsonStorage(PENDING_STORAGE_KEY, []);
+    editorSubscribers = loadJsonStorage(SUBSCRIBERS_STORAGE_KEY, []);
+    weeklyDigest = loadJsonStorage(DIGEST_STORAGE_KEY, { headline: '', selectedIds: [] });
+
+    applyDigestToNewsletterBanner();
     restoreNewsletterUi();
 
     setStatus('loading', 'Arşiv kayıtları yükleniyor...');
@@ -401,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearStatus();
     } catch (_) {
       records = loadJsonStorage(ARCHIVE_STORAGE_KEY, INITIAL_ARCHIVE_JSON);
-      setStatus('error', 'Sunucu bağlantısı sağlanamadı; önbellek/yerel arşiv verisi gösteriliyor.');
+      setStatus('error', 'Sunucu bağlantısı sağlanamadı; yerel arşiv verisi gösteriliyor.');
     }
 
     populateFilterOptions();
@@ -416,6 +398,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     renderArchive();
+  }
+
+  function applyDigestToNewsletterBanner() {
+    const descEl = document.getElementById('newsletterDigestPreview');
+    if (!descEl) return;
+
+    const chosenTitles = (weeklyDigest.selectedIds || [])
+      .map((id) => records.find((r) => r.id === id)?.title)
+      .filter(Boolean);
+
+    if (weeklyDigest.headline || chosenTitles.length > 0) {
+      const parts = [];
+      if (weeklyDigest.headline) parts.push(weeklyDigest.headline);
+      if (chosenTitles.length > 0) parts.push(`Seçki: ${chosenTitles.join(' • ')}`);
+      descEl.textContent = parts.join(' — ');
+    }
   }
 
   function populateFilterOptions() {
@@ -450,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Filtreleme, Sıralama ve Listeleme
+  // Filtreleme, Sıralama (Sadece Yeniden Eskiye / Eskiden Yeniye) ve Liste
   // =========================================================================
   function getMatchedRecords() {
     const normQ = normalizeTr(state.q);
@@ -470,8 +468,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (state.sira === 'oldest') {
       list.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    } else if (state.sira === 'az') {
-      list.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'tr'));
     } else {
       list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     }
@@ -487,7 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resultCount.textContent = `${matched.length} kayıt`;
 
-    // En üstte tek bir "Öne Çıkan" içerik
     const featuredItem =
       matched.find((item) => item.featured) ||
       (!hasCustomFilters ? records.find((item) => item.featured) : null);
@@ -500,7 +495,6 @@ document.addEventListener('DOMContentLoaded', () => {
       featuredCardSlot.innerHTML = '';
     }
 
-    // Alt listede öne çıkan kartı tekrarlamadan sayfalama ("Daha fazla göster") uygula
     const listCandidates = featuredItem
       ? matched.filter((item) => item.id !== featuredItem.id)
       : matched;
@@ -527,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleHtml = highlightTrMatches(item.title, state.q);
     const summaryHtml = highlightTrMatches(item.summary, state.q);
 
-    // Doküman Arşivi için dosya türü/boyutu ve resmî kaynağa bağlantı
     const docInfoBlock =
       item.docMeta || item.sourceUrl
         ? `<div class="card-doc-meta">
@@ -576,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Sekme ve Ayrı "Hakkımızda" Görünümü Yönetimi
+  // Sekme ve Ayrı "Hakkımızda" Görünümü
   // =========================================================================
   function updateTabUi(tabName) {
     document.querySelectorAll('#sectionTabs .tab-item').forEach((btn) => {
@@ -697,7 +690,6 @@ document.addEventListener('DOMContentLoaded', () => {
       `${item.author || 'AkademikKapital'}. (${(item.date || '2026').slice(0, 4)}). ${item.title}. AkademikKapital. ${permalink}`;
     document.getElementById('detailApaText').textContent = apaText;
 
-    // Open Graph etiketlerini güncelle
     document.getElementById('ogTitle').setAttribute('content', item.title);
     document.getElementById('ogDesc').setAttribute('content', item.summary || item.title);
     document.getElementById('ogUrl').setAttribute('content', permalink);
@@ -741,24 +733,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.getElementById('copyApaBtn').addEventListener('click', () => {
-    const apa = document.getElementById('detailApaText').textContent;
-    copyToClipboard(apa, 'APA künyesi panoya kopyalandı.');
+    copyToClipboard(document.getElementById('detailApaText').textContent, 'APA künyesi panoya kopyalandı.');
   });
 
   document.getElementById('copyPermalinkBtn').addEventListener('click', () => {
-    const link = document.getElementById('detailPermalink').textContent;
-    copyToClipboard(link, 'Kalıcı bağlantı panoya kopyalandı.');
+    copyToClipboard(document.getElementById('detailPermalink').textContent, 'Kalıcı bağlantı panoya kopyalandı.');
   });
 
   // =========================================================================
-  // Bülten (Çift Onay + Honeypot + KVKK + Tek Tıkla Çıkış)
+  // Bülten (Kayıtlar Yalnızca Editör Görünümündeki Bülten Listesine Düşer)
   // =========================================================================
   const newsletterForm = document.getElementById('newsletterForm');
   const doubleOptInBox = document.getElementById('doubleOptInBox');
   const newsletterMessage = document.getElementById('newsletterMessage');
 
   function restoreNewsletterUi() {
-    const saved = loadJsonStorage(NEWSLETTER_STORAGE_KEY, null);
+    const saved = loadJsonStorage(NEWSLETTER_STATE_KEY, null);
     if (saved && saved.status === 'confirmed') {
       newsletterMessage.textContent = `${saved.email} adresi için haftalık bülten aboneliği aktif.`;
       doubleOptInBox.classList.remove('hidden');
@@ -766,11 +756,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function recordSubscriberInEditorList(email, status) {
+    const normalized = email.toLowerCase();
+    const existingIdx = editorSubscribers.findIndex((s) => s.email.toLowerCase() === normalized);
+    const entry = {
+      email: normalized,
+      status,
+      updatedAt: new Date().toISOString().slice(0, 10)
+    };
+    if (existingIdx !== -1) {
+      editorSubscribers[existingIdx] = entry;
+    } else {
+      editorSubscribers.unshift(entry);
+    }
+    localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(editorSubscribers));
+  }
+
   newsletterForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const honeypot = document.getElementById('newsletterCompany').value.trim();
     if (honeypot) {
-      // Bot gönderimini sessizce kabul edilmiş gibi geçiştir
       newsletterMessage.textContent = 'Onay adımı gönderildi.';
       return;
     }
@@ -788,9 +793,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     localStorage.setItem(
-      NEWSLETTER_STORAGE_KEY,
+      NEWSLETTER_STATE_KEY,
       JSON.stringify({ email, status: 'pending_double_opt_in' })
     );
+    recordSubscriberInEditorList(email, 'Onay Bekliyor');
 
     try {
       await fetch('/api/newsletter', {
@@ -806,17 +812,25 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('confirmDoubleOptInBtn').addEventListener('click', () => {
-    const saved = loadJsonStorage(NEWSLETTER_STORAGE_KEY, null);
+    const saved = loadJsonStorage(NEWSLETTER_STATE_KEY, null);
     if (!saved) return;
     saved.status = 'confirmed';
-    localStorage.setItem(NEWSLETTER_STORAGE_KEY, JSON.stringify(saved));
+    localStorage.setItem(NEWSLETTER_STATE_KEY, JSON.stringify(saved));
+    recordSubscriberInEditorList(saved.email, 'Onaylı');
     newsletterMessage.textContent = `${saved.email} adresi haftalık özet bültenine onaylandı.`;
     document.getElementById('confirmDoubleOptInBtn').classList.add('hidden');
     showToast('Bülten aboneliğiniz onaylandı.');
   });
 
   document.getElementById('unsubscribeDemoBtn').addEventListener('click', () => {
-    localStorage.removeItem(NEWSLETTER_STORAGE_KEY);
+    const saved = loadJsonStorage(NEWSLETTER_STATE_KEY, null);
+    if (saved?.email) {
+      editorSubscribers = editorSubscribers.filter(
+        (s) => s.email.toLowerCase() !== saved.email.toLowerCase()
+      );
+      localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(editorSubscribers));
+    }
+    localStorage.removeItem(NEWSLETTER_STATE_KEY);
     doubleOptInBox.classList.add('hidden');
     newsletterForm.reset();
     newsletterMessage.textContent = 'Tek tıkla bülten çıkışınız tamamlandı.';
@@ -907,7 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // =========================================================================
-  // Yönetim Paneli (Alt Bilgiden Açılır, Editör Onayı ve Kayıt Ekleme)
+  // Yönetim Paneli: Bülten Seçkisi, Sadece Editöre Özel Abone Listesi, Onay & Kayıt
   // =========================================================================
   const adminDialog = document.getElementById('adminDialog');
 
@@ -920,11 +934,63 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pass === ADMIN_PASSCODE) {
       document.getElementById('adminGate').classList.add('hidden');
       document.getElementById('adminConsole').classList.remove('hidden');
+      renderDigestEditor();
+      renderSubscribersForEditor();
       renderPendingQueue();
     } else {
       showToast('Yönetici parolası hatalı.');
     }
   });
+
+  function renderDigestEditor() {
+    const headlineInput = document.getElementById('digestHeadline');
+    const checklist = document.getElementById('digestChecklist');
+    headlineInput.value = weeklyDigest.headline || '';
+
+    checklist.innerHTML = records
+      .map((rec) => {
+        const checked = (weeklyDigest.selectedIds || []).includes(rec.id) ? 'checked' : '';
+        return `
+          <label class="consent-check dark-check">
+            <input type="checkbox" class="js-digest-item" value="${escapeHtml(rec.id)}" ${checked}>
+            <span><strong>${escapeHtml(rec.title)}</strong> (${escapeHtml(formatDateTr(rec.date))})</span>
+          </label>
+        `;
+      })
+      .join('');
+  }
+
+  document.getElementById('digestSelectionForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const headline = document.getElementById('digestHeadline').value.trim();
+    const selectedIds = Array.from(document.querySelectorAll('.js-digest-item:checked')).map(
+      (cb) => cb.value
+    );
+    weeklyDigest = { headline, selectedIds };
+    localStorage.setItem(DIGEST_STORAGE_KEY, JSON.stringify(weeklyDigest));
+    applyDigestToNewsletterBanner();
+    showToast('Haftalık bülten seçkisi kaydedildi.');
+  });
+
+  function renderSubscribersForEditor() {
+    const box = document.getElementById('subscriberListBox');
+    if (!box) return;
+    if (!editorSubscribers.length) {
+      box.innerHTML = '<p>Henüz kayıtlı bülten abonesi bulunmuyor.</p>';
+      return;
+    }
+
+    box.innerHTML = editorSubscribers
+      .map(
+        (sub) => `
+        <div class="subscriber-row">
+          <span><strong>${escapeHtml(sub.email)}</strong></span>
+          <span>${escapeHtml(sub.status)} • ${escapeHtml(sub.updatedAt)}</span>
+        </div>
+      `
+      )
+      .join('');
+  }
 
   function renderPendingQueue() {
     const box = document.getElementById('pendingQueueList');
@@ -982,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
       saveArchive();
       localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(pendingSubmissions));
       populateFilterOptions();
+      renderDigestEditor();
       renderPendingQueue();
       renderArchive();
       showToast('Gönderim onaylandı ve arşive eklendi.');
@@ -1038,6 +1105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     records.unshift(newItem);
     saveArchive();
     populateFilterOptions();
+    renderDigestEditor();
     renderArchive();
     e.target.reset();
     showToast('Yeni kayıt arşive eklendi.');
@@ -1110,7 +1178,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // =========================================================================
-  // Yardımcı Fonksiyonlar & Diyalog Kapatma
+  // Yardımcılar
   // =========================================================================
   function openDialog(dlg) {
     if (dlg && typeof dlg.showModal === 'function') dlg.showModal();
