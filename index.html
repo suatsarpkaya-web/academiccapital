@@ -11,24 +11,39 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AkademikKapital — Akademinin Hafızası, Yükseköğretimin Pusulası</title>
-  <meta name="description" content="Yükseköğretim politikaları, YÖK/ÖSYM düzenlemeleri, üniversite verileri ve akademik duyuruları bir araya getiren dijital yayın arşivi.">
+  <title>AkademikKapital — Yükseköğretim Yayın ve Veri Arşivi</title>
+  <meta name="description" content="Yükseköğretim politikaları, YÖK ve ÖSYM düzenlemeleri, üniversite verileri, analizler ve resmi belgeler için bağımsız açık erişim arşiv.">
+  <link rel="canonical" href="https://akademikkapital.vercel.app/">
 
-  <!-- Dinamik Open Graph Meta Etiketleri -->
+  <!-- Open Graph / Sosyal Paylaşım Etiketleri -->
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="tr_TR">
   <meta property="og:site_name" content="AkademikKapital">
-  <meta property="og:title" id="ogTitle" content="AkademikKapital — Yükseköğretim Arşivi">
-  <meta property="og:description" id="ogDesc" content="Akademinin hafızası, yükseköğretimin pusulası. Yükseköğretim politikaları ve veri arşivi.">
+  <meta property="og:title" id="ogTitle" content="AkademikKapital — Akademinin hafızası, yükseköğretimin pusulası">
+  <meta property="og:description" id="ogDesc" content="Yükseköğretim gündemini izleyen, analiz ve rapor yayımlayan bağımsız açık erişim yayın ve veri arşivi.">
   <meta property="og:image" id="ogImage" content="https://akademikkapital.vercel.app/og-cover.png">
   <meta property="og:url" id="ogUrl" content="https://akademikkapital.vercel.app/">
 
-  <!-- Inline SVG Favicon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23142642'><path d='M12 3L1 9l11 6 9-4.91V17h2V9L12 3zm0 4.18L17.09 10 12 12.82 6.91 10 12 7.18zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z'/></svg>">
+  <!-- RSS Besleme Bağlantısı -->
+  <link rel="alternate" type="application/rss+xml" title="AkademikKapital RSS Beslemesi" href="feed.xml">
 
-  <!-- Yazı Tipleri -->
+  <!-- İkon ve Tipografi -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'><circle cx='18' cy='18' r='17' fill='%23142642'/><text x='18' y='23' text-anchor='middle' fill='%23F6F2E6' font-family='Georgia,serif' font-size='14' font-weight='700'>AK</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Yapılandırılmış Veri (schema.org WebSite & CollectionPage) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "AkademikKapital",
+    "description": "Yükseköğretim politikaları, analizler, duyurular ve veri arşivi.",
+    "url": "https://akademikkapital.vercel.app/",
+    "inLanguage": "tr"
+  }
+  </script>
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -38,301 +53,402 @@
   height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- End Google Tag Manager (noscript) -->
 
-  <!-- Sabit Üst Bilgi (Header) -->
-  <header class="site-header">
-    <div class="header-container">
-      <!-- Öncelik 3: Profil Fotoğrafı / Logo ve Site İsmi Ana Sayfa Bağlantısı -->
-      <a href="/" id="siteLogoLink" class="brand-home-link" aria-label="AkademikKapital Ana Sayfa" title="Ana Sayfaya Dön">
-        <div id="siteLogo" class="brand-avatar">
-          <img src="logo.png" alt="AkademikKapital Profil" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          <span class="avatar-fallback" aria-hidden="true">AK</span>
-        </div>
-        <div class="brand-text">
-          <span class="brand-title">AKADEMİKKAPİTAL</span>
+  <!-- Erişilebilirlik: İçeriğe Atla -->
+  <a href="#mainContent" class="skip-link">İçeriğe atla</a>
+
+  <!-- Sabit İnce Üst Çubuk (En fazla 64 px) -->
+  <header class="top-bar" role="banner">
+    <div class="top-bar-inner">
+      <a href="#tumu" id="brandHomeLink" class="brand-link" aria-label="AkademikKapital Ana Sayfa">
+        <span class="ak-badge" aria-hidden="true">AK</span>
+        <span class="brand-identity">
+          <span class="brand-name">AKADEMİKKAPİTAL</span>
           <span class="brand-slogan">Akademinin hafızası, yükseköğretimin pusulası</span>
-        </div>
+        </span>
       </a>
 
-      <div class="header-actions">
-        <div id="headerSocial" class="social-bar">
-          <div id="headerSocialLinks" class="social-links">
-            <a href="https://t.me/akademikkapital" target="_blank" rel="noopener noreferrer" aria-label="Telegram">Telegram</a>
-            <a href="https://whatsapp.com/channel/0029Vb6" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">WhatsApp</a>
-            <a href="https://instagram.com/akademikkapital" target="_blank" rel="noopener noreferrer" aria-label="Instagram">Instagram</a>
-            <a href="https://youtube.com/@akademikkapital" target="_blank" rel="noopener noreferrer" aria-label="YouTube">YouTube</a>
-          </div>
-        </div>
-
-        <button type="button" id="adminBtn" class="btn btn-secondary">Yönetim Paneli</button>
-        <button type="button" id="menuToggle" class="mobile-toggle" aria-label="Menüyü Aç/Kapat" aria-expanded="false">
-          <span></span><span></span><span></span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Kategori Navigasyonu -->
-    <nav id="mainNav" class="nav-bar" aria-label="Ana Menü">
-      <ul class="nav-list">
-        <li><a href="#tumu" class="nav-link active" data-section="tumu">Tümü</a></li>
-        <li><a href="#makale" class="nav-link" data-section="makale">Makale</a></li>
-        <li><a href="#haberler" class="nav-link" data-section="haberler">Haberler</a></li>
-        <li><a href="#duyurular" class="nav-link" data-section="duyurular">Duyurular</a></li>
-        <li><a href="#dokuman" class="nav-link" data-section="dokuman">Doküman Arşivi</a></li>
-        <li><a href="#baglanti" class="nav-link" data-section="baglanti">Dış Bağlantılar</a></li>
-        <li><a href="#hakkimizda" class="nav-link" data-section="hakkimizda">Hakkımızda</a></li>
-      </ul>
-    </nav>
-
-    <!-- Arama ve Sıralama Çubuğu -->
-    <div class="search-sort-bar">
-      <div class="search-box">
-        <input type="search" id="searchInput" placeholder="Arşivde başlık, yazar veya içerik ara..." aria-label="Arşivde ara">
-      </div>
-      <div class="sort-box">
-        <select id="sortSelect" aria-label="Sıralama ölçütü">
-          <option value="newest">En Yeni İlk</option>
-          <option value="oldest">En Eski İlk</option>
-          <option value="title">Başlığa Göre (A-Z)</option>
-        </select>
-      </div>
+      <nav class="top-social" aria-label="Sosyal kanallar">
+        <a href="https://t.me/akademikkapital" target="_blank" rel="noopener noreferrer">Telegram</a>
+        <a href="https://whatsapp.com/channel/0029Vb6" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        <a href="https://instagram.com/akademikkapital" target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a href="https://youtube.com/@akademikkapital" target="_blank" rel="noopener noreferrer">YouTube</a>
+      </nav>
     </div>
   </header>
 
+  <!-- Normal Akışta Kayan Sekme Çubuğu -->
+  <nav class="section-nav-wrap" aria-label="Arşiv bölümleri">
+    <div id="sectionTabs" class="section-tabs" role="tablist">
+      <button type="button" class="tab-item active" role="tab" aria-selected="true" aria-current="page" data-tab="tumu">Tümü</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="makale">Makale</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="haberler">Haberler</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="duyurular">Duyurular</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="dokuman">Doküman Arşivi</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="baglanti">Dış Bağlantılar</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="hakkimizda">Hakkımızda</button>
+    </div>
+  </nav>
+
   <!-- Ana İçerik -->
-  <main id="mainContent" class="site-main">
-    <!-- Görünüm 1: Arşiv Listesi -->
-    <section id="viewArchive" class="view-section">
-      <!-- Öne Çıkanlar Karuseli -->
-      <div id="featured" class="carousel-container hidden">
-        <button type="button" id="featPrev" class="carousel-control prev" aria-label="Önceki">&lsaquo;</button>
-        <div class="carousel-viewport">
-          <div id="featuredTrack" class="carousel-track"></div>
+  <main id="mainContent" class="main-container" tabindex="-1">
+    <!-- ARŞİV GÖRÜNÜMÜ -->
+    <section id="archiveView" aria-labelledby="pageMainHeading">
+      <!-- Arama, Sıralama ve Sınırlı Filtreler -->
+      <div class="toolbar">
+        <div class="search-field-wrap">
+          <label for="searchInput" class="sr-only">Arşivde arama yapın (/ kısayolu)</label>
+          <input
+            type="search"
+            id="searchInput"
+            class="search-input"
+            placeholder="Arşivde başlık, yazar veya içerik ara..."
+            autocomplete="off"
+          >
+          <span class="shortcut-hint" aria-hidden="true">/</span>
         </div>
-        <button type="button" id="featNext" class="carousel-control next" aria-label="Sonraki">&rsaquo;</button>
-        <div id="featuredPos" class="carousel-indicators"></div>
+
+        <div class="sort-field-wrap">
+          <label for="sortSelect" class="sr-only">Sıralama ölçütü</label>
+          <select id="sortSelect" class="sort-select">
+            <option value="newest">En Yeni İlk</option>
+            <option value="oldest">En Eski İlk</option>
+            <option value="az">A-Z</option>
+          </select>
+        </div>
       </div>
 
-      <!-- Liste Başlığı -->
-      <header class="list-header">
+      <!-- Ek Filtreler: Yalnızca Yıl ve Konu Etiketi -->
+      <div class="secondary-filters" aria-label="Yıl ve konu etiketi filtreleri">
+        <div class="filter-control">
+          <label for="yearFilter">Yıl</label>
+          <select id="yearFilter" class="filter-select">
+            <option value="ALL">Tüm Yıllar</option>
+          </select>
+        </div>
+        <div class="filter-control">
+          <label for="topicFilter">Konu Etiketi</label>
+          <select id="topicFilter" class="filter-select">
+            <option value="ALL">Tüm Konular</option>
+          </select>
+        </div>
+        <button type="button" id="resetFiltersBtn" class="btn-ghost hidden">Filtreleri temizle</button>
+      </div>
+
+      <!-- Tek H1 Sayfa Başlığı ve Durum Özeti -->
+      <div class="archive-heading-row">
         <div>
-          <h1 id="listTitle">Tüm Arşiv Kayıtları</h1>
-          <p id="listDesc">Yükseköğretim politikaları, YÖK/ÖSYM düzenlemeleri, veriler ve akademik duyurular.</p>
+          <h1 id="pageMainHeading" class="page-h1">Yükseköğretim Arşivi</h1>
+          <p id="activeViewNote" class="view-subtitle">Resmi kararlar, analizler, veriler ve birincil kaynak bağlantıları tek yerde.</p>
         </div>
-        <span id="listCount" class="badge">0 içerik</span>
-      </header>
-
-      <!-- Yıl Filtreleri -->
-      <div id="yearChips" class="chip-group" aria-label="Yıla göre filtrele"></div>
-
-      <!-- İçerik Kartları -->
-      <div id="contentList" class="content-grid"></div>
-
-      <!-- Boş Durum -->
-      <div id="emptyState" class="empty-state hidden">
-        <h3>Aramanızla Eşleşen İçerik Bulunamadı</h3>
-        <p>Arama terimlerinizi veya seçili filtreleri değiştirerek tekrar deneyebilirsiniz.</p>
+        <span id="resultCount" class="result-count" aria-live="polite">0 kayıt</span>
       </div>
 
-      <!-- Öncelik 5: Haftalık Özet E-posta Bülteni Kutusu -->
-      <section id="newsletterSection" class="newsletter-box" aria-labelledby="newsletterHeading">
-        <div class="newsletter-info">
-          <span class="newsletter-kicker">HAFTALIK ÖZET BÜLTENİ</span>
-          <h2 id="newsletterHeading">Yükseköğretim Gündemi Her Pazartesi E-Postanızda</h2>
-          <p>Hafta boyunca yayımlanan YÖK/ÖSYM kararları, istatistik raporları ve öne çıkan analizlerin derlenmiş özetini ücretsiz alın.</p>
+      <!-- Yükleniyor / Hata / Boş Durum Alanları -->
+      <div id="statusBanner" class="status-banner hidden" role="status" aria-live="polite"></div>
+
+      <!-- Tek Öne Çıkan İçerik Alanı -->
+      <section id="featuredSection" class="featured-section hidden" aria-label="Öne çıkan içerik">
+        <div class="section-eyebrow-row">
+          <span class="featured-tag">ÖNE ÇIKAN</span>
+          <span class="editorial-rule-note">Kaynaklı ve tarihli yayın</span>
         </div>
-        <form id="newsletterForm" class="newsletter-form" novalidate>
-          <div class="newsletter-input-row">
-            <input type="email" id="newsletterEmail" required placeholder="E-posta adresiniz (ör. ad@universite.edu.tr)" aria-label="E-posta adresi">
-            <button type="submit" id="newsletterSubmitBtn" class="btn btn-accent">Abone Ol</button>
-          </div>
-          <label class="newsletter-consent">
-            <input type="checkbox" id="newsletterConsent" required>
-            <span>Haftalık özet bülteni gönderimi kapsamında e-posta adresimin işlenmesini ve gizlilik koşullarını onaylıyorum.</span>
-          </label>
-          <p id="newsletterFeedback" class="newsletter-feedback" role="status" aria-live="polite"></p>
-        </form>
+        <div id="featuredCardSlot"></div>
       </section>
 
-      <!-- Katkı Çağrısı -->
-      <aside id="ctaPublish" class="cta-box">
-        <h2>Arşive Katkıda Bulunun</h2>
-        <p>Yükseköğretim politikaları ve akademik alana dair analizlerinizi veya resmi doküman bağlantılarını AkademikKapital arşivine iletebilirsiniz.</p>
-        <a href="mailto:akademikkapital@gmail.com" class="btn btn-primary">İçerik Gönder</a>
+      <!-- Liste Alanı -->
+      <section aria-label="Arşiv kayıtları listesi">
+        <div id="archiveList" class="archive-list"></div>
+        <div class="load-more-wrap">
+          <button type="button" id="loadMoreBtn" class="btn-secondary hidden">Daha fazla göster</button>
+        </div>
+      </section>
+
+      <!-- Editoryal İlkeler Bilgi Şeridi -->
+      <aside class="editorial-bar" aria-label="Editoryal ilkeler">
+        <p><strong>Editoryal İlkeler:</strong> Her kayıtta kaynak ve yayın tarihi yer alır; resmi belgelerde birincil kaynağa yönlendirilir. Telifli metinlerin tamamı kopyalanmaz, özet ve kaynak bağlantısı sunulur. Haber ile analiz/görüş ayrı etiketlenir. Reklam, açılır pencere ve izleme çerezi bulunmaz.</p>
       </aside>
+
+      <!-- Lacivert Haftalık Bülten Bölümü -->
+      <section id="newsletterSection" class="newsletter-section" aria-labelledby="newsletterHeading">
+        <div class="newsletter-inner">
+          <div class="newsletter-copy">
+            <span class="newsletter-eyebrow">HAFTALIK BÜLTEN</span>
+            <h2 id="newsletterHeading">Haftalık Yükseköğretim Özeti</h2>
+            <p>YÖK, ÖSYM ve üniversite gündemindeki temel gelişmeler, yayımlanan raporlar ve analiz özetleri haftada bir e-postanıza gelir. Her iletide tek tıkla abonelikten çıkabilirsiniz.</p>
+            <p class="newsletter-legal">
+              <a href="#hakkimizda-kvkk" id="kvkkOpenLink">KVKK Aydınlatma Metni</a> kapsamında çift onay (double opt-in) ile kayıt alınır.
+            </p>
+          </div>
+
+          <form id="newsletterForm" class="newsletter-form" novalidate>
+            <!-- Honeypot (spam bot tuzak alanı — kullanıcı görmez) -->
+            <div class="hp-field" aria-hidden="true">
+              <label for="newsletterCompany">Kurum</label>
+              <input type="text" id="newsletterCompany" name="company" tabindex="-1" autocomplete="off">
+            </div>
+
+            <div class="newsletter-row">
+              <label for="newsletterEmail" class="sr-only">E-posta adresiniz</label>
+              <input type="email" id="newsletterEmail" class="newsletter-input" placeholder="E-posta adresiniz" required>
+              <button type="submit" id="newsletterSubmit" class="btn-primary">Abone Ol</button>
+            </div>
+
+            <label class="consent-check">
+              <input type="checkbox" id="newsletterConsent" required>
+              <span>Haftalık özet bülteninin gönderilmesi için açık rıza veriyorum ve KVKK aydınlatma metnini okudum.</span>
+            </label>
+
+            <div id="newsletterMessage" class="form-feedback" role="status" aria-live="polite"></div>
+            <div id="doubleOptInBox" class="double-optin-box hidden">
+              <p><strong>Çift Onay Bekleniyor:</strong> Aboneliğinizi tamamlamak için aşağıdaki onay adımını doğrulayın.</p>
+              <button type="button" id="confirmDoubleOptInBtn" class="btn-accent-outline">Aboneliğimi Onayla</button>
+              <button type="button" id="unsubscribeDemoBtn" class="btn-ghost-light">Tek tıkla çıkış yap</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- "Arşive Katkıda Bulunun" Kartı ve "İçerik Gönder" Düğmesi -->
+      <section id="contributeSection" class="contribute-card" aria-labelledby="contributeHeading">
+        <div>
+          <h2 id="contributeHeading">Arşive Katkıda Bulunun</h2>
+          <p>Yükseköğretim politikaları, kurum verileri, mevzuat duyuruları veya açık erişimli çalışmalar için öneri gönderebilirsiniz. Gönderimler yayımlanmadan önce editör onayından geçer.</p>
+        </div>
+        <button type="button" id="openContributeBtn" class="btn-primary">İçerik Gönder</button>
+      </section>
     </section>
 
-    <!-- Görünüm 2: Hakkımızda -->
-    <section id="viewAbout" class="view-section hidden">
-      <article class="about-card">
-        <h1>Hakkımızda</h1>
-        <p class="lead">AkademikKapital, yükseköğretim politikalarını, YÖK ve ÖSYM düzenlemelerini, üniversite verilerini ve akademik duyuruları tek bir çatı altında toplayan bağımsız bir dijital yayın arşividir.</p>
+    <!-- AYRI SAYFA GÖRÜNÜMÜ: HAKKIMIZDA -->
+    <section id="aboutView" class="about-view hidden" aria-labelledby="aboutHeading">
+      <div class="about-topbar">
+        <button type="button" id="backToArchiveBtn" class="btn-secondary">&larr; Arşive Dön</button>
+      </div>
 
-        <h2>Misyonumuz</h2>
-        <p>Akademinin kurumsal hafızasını korumak, yükseköğretimdeki yapısal dönüşümleri belgelemek ve araştırmacılar ile karar alıcılara doğrulanmış kaynaklar sunmaktır.</p>
+      <article class="prose-column">
+        <h1 id="aboutHeading" class="page-h1">Hakkımızda</h1>
+        <p class="prose-lead">AkademikKapital; yükseköğretim gündemini izleyen, analiz ve rapor yayımlayan, akademisyenlerin, araştırmacıların ve politika izleyicilerinin düzenli uğradığı bağımsız bir açık erişim yayın ve veri arşividir.</p>
 
-        <h2>Arşiv Bölümleri</h2>
+        <h2>Bağımsızlık Beyanı</h2>
+        <p>AkademikKapital herhangi bir kurumun, siyasi yapının veya ticari çıkar grubunun yayın organı değildir. Yayın seçkisi ve editoryal öncelikler kamusal bilgiye erişim, doğruluk ve akademik ölçütler temelinde belirlenir.</p>
+
+        <h2>Editoryal İlkeler ve Etiketleme</h2>
         <ul>
-          <li><strong>Makale:</strong> Yükseköğretim ve bilim politikaları üzerine analitik incelemeler.</li>
-          <li><strong>Haberler:</strong> Akademik ekosistemden güncel gelişmeler.</li>
-          <li><strong>Duyurular:</strong> Resmi kararlar, yönetmelik değişiklikleri ve akademik ilanlar.</li>
-          <li><strong>Doküman Arşivi:</strong> Raporlar, istatistikler ve doğrudan erişilebilir kaynak bağlantıları.</li>
-          <li><strong>Dış Bağlantılar:</strong> Kurumsal veri portalları ve resmi başvuru adresleri.</li>
+          <li><strong>Kaynak ve Tarih Zorunluluğu:</strong> Her kayıtta kaynak adı ve yayın tarihi açıkça yer alır.</li>
+          <li><strong>Birincil Kaynak ve Telif Hassasiyeti:</strong> Resmi belge ve düzenlemelerde birincil kaynağa bağlantı verilir; telifli metinlerin tamamı kopyalanmaz, özet ve bağlantı paylaşılır.</li>
+          <li><strong>Haber ile Analiz/Görüş Ayrımı:</strong> Güncel olgu ve duyurular <em>Haber / Duyuru</em> olarak, yorum ve değerlendirme içeren metinler <em>Analiz / Görüş</em> olarak ayrı etiketlenir.</li>
         </ul>
 
+        <h2>Düzeltme Politikası</h2>
+        <p>Yayımlanan bir içerikte maddi hata, veri yanlışlığı veya eksik bağlam tespit edildiğinde kanıtıyla birlikte yapılan başvurular incelenir; gerekli düzeltme kayıt altında güncellenir ve son güncelleme tarihi görünür biçimde kaydedilir.</p>
+
+        <h2 id="hakkimizda-kvkk">Gizlilik, Çerezsiz Analitik ve KVKK Aydınlatma</h2>
+        <p>Sitede reklam, açılır pencere (pop-up) ve kişiye özel profilleyen izleme çerezi bulunmaz. Ziyaret istatistikleri gizlilik odaklı ölçüm yapılandırmasıyla değerlendirilir. Bülten formuna girilen e-posta adresleri yalnızca haftalık özet bülteni gönderimi amacıyla işlenir ve dilediğiniz an tek tıkla listeden çıkarılabilir.</p>
+
         <h2>İletişim</h2>
-        <p>Görüş, öneri ve katkılarınız için: <a href="mailto:akademikkapital@gmail.com">akademikkapital@gmail.com</a></p>
+        <p>Editoryal başvurular, düzeltme bildirimleri ve kurumsal iletişim için resmî adresimiz:</p>
+        <div class="contact-box">
+          <span id="contactEmailText" class="contact-email">akademikkapital@gmail.com</span>
+          <button type="button" id="copyEmailBtn" class="btn-secondary">Kopyala</button>
+          <button type="button" id="toggleContactFormBtn" class="btn-primary">Kısa Mesaj Gönder</button>
+        </div>
+
+        <form id="quickContactForm" class="quick-contact-form hidden" novalidate>
+          <div class="field-group">
+            <label for="contactName">Ad Soyad</label>
+            <input type="text" id="contactName" required>
+          </div>
+          <div class="field-group">
+            <label for="contactMessage">Mesajınız</label>
+            <textarea id="contactMessage" rows="3" required></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Mesajı Hazırla</button>
+          <p id="quickContactStatus" class="form-feedback" role="status" aria-live="polite"></p>
+        </form>
+      </article>
+    </section>
+
+    <!-- TEK SÜTUN DETAY GÖRÜNÜMÜ (65-75 KARAKTER OKUMA GENİŞLİĞİ) -->
+    <section id="detailView" class="detail-view hidden" aria-labelledby="detailTitle">
+      <div class="detail-nav-bar">
+        <button type="button" id="detailBackBtn" class="btn-secondary">&larr; Listeye Dön</button>
+        <div class="detail-actions">
+          <button type="button" id="printDetailBtn" class="btn-ghost">Yazdır</button>
+          <button type="button" id="shareDetailBtn" class="btn-ghost">Paylaş</button>
+          <button type="button" id="copyApaBtn" class="btn-primary">Künyeyi kopyala (APA)</button>
+        </div>
+      </div>
+
+      <article id="detailArticle" class="reading-column" itemscope itemtype="https://schema.org/Article">
+        <header class="detail-header">
+          <div class="detail-badges">
+            <span id="detailTypeBadge" class="type-badge"></span>
+            <span id="detailGenreBadge" class="genre-badge"></span>
+          </div>
+          <h1 id="detailTitle" class="detail-title" itemprop="headline"></h1>
+          <div class="detail-meta">
+            <span>Yazar: <strong id="detailAuthor" itemprop="author"></strong></span>
+            <span>Kaynak: <strong id="detailSource"></strong></span>
+            <span>Yayın: <time id="detailDate" itemprop="datePublished"></time></span>
+            <span>Son güncelleme: <time id="detailUpdated" itemprop="dateModified"></time></span>
+            <span id="detailReadTime"></span>
+          </div>
+          <div class="permalink-row">
+            <span>Kalıcı URL:</span>
+            <code id="detailPermalink"></code>
+            <button type="button" id="copyPermalinkBtn" class="btn-ghost">Kopyala</button>
+          </div>
+        </header>
+
+        <div id="detailBody" class="detail-body" itemprop="articleBody"></div>
+
+        <div id="detailPrimaryLinkBox" class="primary-source-box hidden">
+          <span>Birincil Kaynak / Resmi Belge:</span>
+          <a id="detailPrimaryLink" href="#" target="_blank" rel="noopener noreferrer"></a>
+        </div>
+
+        <footer class="detail-apa-box">
+          <h2>Önerilen APA Künyesi</h2>
+          <p id="detailApaText" class="apa-text"></p>
+        </footer>
       </article>
     </section>
   </main>
 
-  <!-- Alt Bilgi (Footer) -->
-  <footer class="site-footer">
-    <div class="footer-container">
-      <div class="footer-info">
-        <a href="/" class="footer-brand">AkademikKapital</a>
-        <p class="footer-slogan">"Akademinin hafızası, yükseköğretimin pusulası"</p>
-        <p class="footer-archive-note">Bağımsız yükseköğretim yayın ve veri arşivi.</p>
+  <!-- Alt Bilgi -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-brand-col">
+        <p class="footer-slogan">Akademinin hafızası, yükseköğretimin pusulası</p>
+        <p class="footer-desc">Bağımsız yükseköğretim yayın ve veri arşivi.</p>
+        <p class="footer-copy">&copy; 2026 AkademikKapital. Tüm hakları saklıdır.</p>
       </div>
 
-      <div class="footer-links">
-        <div id="footerSocial" class="social-bar">
-          <div id="footerSocialLinks" class="social-links">
-            <a href="https://t.me/akademikkapital" target="_blank" rel="noopener noreferrer">Telegram</a>
-            <a href="https://whatsapp.com/channel/0029Vb6" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-            <a href="https://instagram.com/akademikkapital" target="_blank" rel="noopener noreferrer">Instagram</a>
-            <a href="https://youtube.com/@akademikkapital" target="_blank" rel="noopener noreferrer">YouTube</a>
-          </div>
+      <div class="footer-meta-col">
+        <nav class="footer-social" aria-label="Alt bilgi sosyal bağlantıları">
+          <a href="https://t.me/akademikkapital" target="_blank" rel="noopener noreferrer">Telegram</a>
+          <a href="https://whatsapp.com/channel/0029Vb6" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+          <a href="https://instagram.com/akademikkapital" target="_blank" rel="noopener noreferrer">Instagram</a>
+          <a href="https://youtube.com/@akademikkapital" target="_blank" rel="noopener noreferrer">YouTube</a>
+          <a href="feed.xml" id="rssFollowLink" class="rss-link">RSS ile takip et</a>
+        </nav>
+
+        <div class="footer-contact-line">
+          <span>İletişim: akademikkapital@gmail.com</span>
+          <button type="button" id="footerCopyEmailBtn" class="btn-inline-copy">Kopyala</button>
+          <span aria-hidden="true">•</span>
+          <button type="button" id="footerAdminLink" class="footer-text-link">Yönetim Paneli</button>
         </div>
-        <p>İletişim: <a href="mailto:akademikkapital@gmail.com">akademikkapital@gmail.com</a></p>
       </div>
-    </div>
-    <div class="footer-bottom">
-      <p>&copy; <span id="year"></span> AkademikKapital. Tüm hakları saklıdır.</p>
     </div>
   </footer>
 
-  <!-- Toast Bildirimi -->
-  <div id="toast" class="toast-container" role="status" aria-live="polite"></div>
-
-  <!-- DİYALOG 1: İçerik Okuyucu -->
-  <dialog id="readerDialog" class="modal-dialog reader-modal">
-    <div class="modal-content">
-      <div class="modal-top-bar">
-        <span id="readerCategoryBadge" class="badge">Kategori</span>
-        <button type="button" class="modal-close" data-close="readerDialog" aria-label="Kapat">&times;</button>
-      </div>
-      <article id="readerContent" class="reader-body"></article>
-      <div class="modal-footer-actions">
-        <button type="button" id="readerShareBtn" class="btn btn-secondary">Paylaş</button>
-        <button type="button" class="btn btn-primary" data-close="readerDialog">Kapat</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- DİYALOG 2: Öncelik 6 — Görselli Sosyal Medya Paylaşım Penceresi -->
-  <dialog id="shareDialog" class="modal-dialog share-modal">
-    <div class="modal-content">
-      <div class="modal-top-bar">
-        <h2>İçeriği Paylaş</h2>
-        <button type="button" class="modal-close" data-close="shareDialog" aria-label="Kapat">&times;</button>
+  <!-- DİYALOG: İçerik Gönder (Editör Onay Kuyruğuna Düşer) -->
+  <dialog id="contributeDialog" class="dialog-box" aria-labelledby="contributeDialogTitle">
+    <div class="dialog-panel">
+      <div class="dialog-head">
+        <h2 id="contributeDialogTitle">İçerik Gönder</h2>
+        <button type="button" class="dialog-close" data-close-dialog="contributeDialog" aria-label="Pencereyi kapat">&times;</button>
       </div>
 
-      <div class="share-preview-card">
-        <img id="sharePreviewImg" src="" alt="Paylaşım Görseli" class="share-preview-img hidden">
-        <div class="share-preview-text">
-          <strong id="sharePreviewTitle">Başlık</strong>
-          <p id="sharePreviewDesc">Özet</p>
+      <form id="contributeForm" class="stack-form" novalidate>
+        <p class="dialog-note">Gönderdiğiniz kayıt doğrudan yayımlanmaz; editoryal doğrulama ve onay sürecinden sonra arşive eklenir.</p>
+
+        <div class="field-group">
+          <label for="subName">Ad Soyad *</label>
+          <input type="text" id="subName" required>
         </div>
-      </div>
 
-      <div class="share-platforms-grid">
-        <button type="button" id="shareNativeBtn" class="share-btn share-native">Cihazda Paylaş</button>
-        <button type="button" id="shareWhatsappBtn" class="share-btn share-wa">WhatsApp</button>
-        <button type="button" id="shareTelegramBtn" class="share-btn share-tg">Telegram</button>
-        <button type="button" id="shareXBtn" class="share-btn share-x">X (Twitter)</button>
-        <button type="button" id="shareLinkedinBtn" class="share-btn share-li">LinkedIn</button>
-        <button type="button" id="shareFacebookBtn" class="share-btn share-fb">Facebook</button>
-      </div>
-
-      <div class="instagram-share-box">
-        <p class="instagram-note"><strong>Instagram için:</strong> Instagram doğrudan web bağlantısı paylaşımını desteklemez; bağlantıyı kopyalayıp hikâye veya gönderi görselini indirebilirsiniz.</p>
-        <div class="instagram-actions">
-          <button type="button" id="shareCopyLinkBtn" class="btn btn-secondary">Bağlantıyı Kopyala</button>
-          <button type="button" id="shareDownloadImgBtn" class="btn btn-primary">Görseli İndir</button>
+        <div class="field-group">
+          <label for="subInstitution">Kurum / Üniversite *</label>
+          <input type="text" id="subInstitution" required>
         </div>
-      </div>
-    </div>
-  </dialog>
 
-  <!-- DİYALOG 3: Yönetici Girişi -->
-  <dialog id="loginDialog" class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-top-bar">
-        <h2>Yönetici Girişi</h2>
-        <button type="button" class="modal-close" data-close="loginDialog" aria-label="Kapat">&times;</button>
-      </div>
-      <form id="loginForm">
-        <div class="form-group">
-          <label for="adminPassword">Yönetici Şifresi</label>
-          <input type="password" id="adminPassword" required placeholder="Şifrenizi giriniz">
+        <div class="field-group">
+          <label for="subEmail">E-posta *</label>
+          <input type="email" id="subEmail" required>
         </div>
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Giriş Yap</button>
+
+        <div class="field-group">
+          <label for="subType">Tür *</label>
+          <select id="subType" required>
+            <option value="makale">Makale</option>
+            <option value="haberler">Haberler</option>
+            <option value="duyurular">Duyurular</option>
+            <option value="dokuman">Doküman Arşivi</option>
+            <option value="baglanti">Dış Bağlantılar</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="subTitle">Başlık *</label>
+          <input type="text" id="subTitle" required>
+        </div>
+
+        <div class="field-group">
+          <label for="subTextOrUrl">Özet / Metin veya Resmi Bağlantı (URL) *</label>
+          <textarea id="subTextOrUrl" rows="4" required placeholder="Kısa özet/metin veya birincil kaynak bağlantısını yazın..."></textarea>
+        </div>
+
+        <div class="field-group">
+          <label for="subSourceNote">Kaynak Beyanı ve Yayın Tarihi *</label>
+          <input type="text" id="subSourceNote" required placeholder="Örn: YÖK Resmî Duyurusu, 2026-11-20">
+        </div>
+
+        <label class="consent-check dark-check">
+          <input type="checkbox" id="subConfirm" required>
+          <span>Kaynak beyanımın doğru olduğunu, telif haklarına saygı gösterdiğimi ve editör onay sürecini kabul ediyorum.</span>
+        </label>
+
+        <div id="contributeError" class="form-feedback" role="alert"></div>
+
+        <div class="dialog-footer">
+          <button type="button" class="btn-secondary" data-close-dialog="contributeDialog">Vazgeç</button>
+          <button type="submit" class="btn-primary">Onaya Gönder</button>
         </div>
       </form>
+
+      <div id="contributeSuccessScreen" class="submission-receipt hidden">
+        <h3>Gönderiminiz Editör Onayına Alındı</h3>
+        <p id="receiptSummaryText"></p>
+        <button type="button" id="closeReceiptBtn" class="btn-primary">Tamam</button>
+      </div>
     </div>
   </dialog>
 
-  <!-- DİYALOG 4: Yönetim Paneli (Öncelik 1 Backspace Koruması + Öncelik 2 Doküman Adı/URL) -->
-  <dialog id="adminDialog" class="modal-dialog admin-modal">
-    <div class="modal-content">
-      <div class="modal-top-bar">
-        <h2>Yönetim Paneli</h2>
-        <button type="button" class="modal-close" data-close="adminDialog" aria-label="Kapat">&times;</button>
+  <!-- DİYALOG: Yönetim Paneli (Alt Bilgiden Açılır, Yapısı Korundu) -->
+  <dialog id="adminDialog" class="dialog-box" aria-labelledby="adminDialogTitle">
+    <div class="dialog-panel dialog-wide">
+      <div class="dialog-head">
+        <h2 id="adminDialogTitle">Yönetim Paneli</h2>
+        <button type="button" class="dialog-close" data-close-dialog="adminDialog" aria-label="Pencereyi kapat">&times;</button>
       </div>
 
-      <div class="tab-nav">
-        <button type="button" class="tab-btn active" data-tab="adminTabList">İçerik Listesi</button>
-        <button type="button" class="tab-btn" data-tab="adminTabNew">Yeni İçerik / Düzenle</button>
-        <button type="button" class="tab-btn" data-tab="adminTabSettings">Ayarlar & Yedek</button>
-      </div>
-
-      <!-- Sekme 1: Liste -->
-      <div id="adminTabList" class="tab-panel active">
-        <div class="panel-header">
-          <h3>Kayıtlı İçerikler</h3>
-          <input type="search" id="adminSearchInput" placeholder="Panelde ara...">
+      <div id="adminGate" class="stack-form">
+        <p class="dialog-note">Yönetici parolası ile giriş yapın (örnek parola: <code>akademik2026</code>).</p>
+        <div class="field-group">
+          <label for="adminPassInput">Yönetici Parolası</label>
+          <input type="password" id="adminPassInput" autocomplete="current-password">
         </div>
-        <div class="table-wrapper">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Başlık</th>
-                <th>Kategori</th>
-                <th>Tarih</th>
-                <th>İşlemler</th>
-              </tr>
-            </thead>
-            <tbody id="adminTableBody"></tbody>
-          </table>
+        <div class="dialog-footer">
+          <button type="button" id="adminLoginSubmit" class="btn-primary">Giriş</button>
         </div>
       </div>
 
-      <!-- Sekme 2: Yeni İçerik / Düzenleme -->
-      <div id="adminTabNew" class="tab-panel">
-        <h3 id="formTitle">Yeni İçerik Ekle</h3>
-        <form id="contentForm">
-          <input type="hidden" id="editItemId" value="">
+      <div id="adminConsole" class="hidden">
+        <h3>Editör Onayı Bekleyen Gönderimler</h3>
+        <div id="pendingQueueList" class="pending-queue"></div>
 
-          <div class="form-group">
-            <label for="itemTitle">Başlık *</label>
-            <input type="text" id="itemTitle" required placeholder="İçerik başlığını giriniz">
+        <h3>Yeni Arşiv Kaydı Ekle / Düzenle</h3>
+        <form id="adminRecordForm" class="stack-form">
+          <input type="hidden" id="adminEditId">
+          <div class="field-group">
+            <label for="admTitle">Başlık *</label>
+            <input type="text" id="admTitle" required>
           </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="itemCategory">Kategori *</label>
-              <select id="itemCategory" required>
+          <div class="two-col">
+            <div class="field-group">
+              <label for="admCategory">Tür</label>
+              <select id="admCategory">
                 <option value="makale">Makale</option>
                 <option value="haberler">Haberler</option>
                 <option value="duyurular">Duyurular</option>
@@ -340,74 +456,68 @@
                 <option value="baglanti">Dış Bağlantılar</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="itemDate">Tarih *</label>
-              <input type="date" id="itemDate" required>
+            <div class="field-group">
+              <label for="admGenre">Yayın Niteliği</label>
+              <select id="admGenre">
+                <option value="Haber / Duyuru">Haber / Duyuru</option>
+                <option value="Analiz / Görüş">Analiz / Görüş</option>
+                <option value="Resmî Belge">Resmî Belge</option>
+              </select>
             </div>
           </div>
-
-          <div class="form-group">
-            <label for="itemAuthor">Yazar / Kaynak</label>
-            <input type="text" id="itemAuthor" placeholder="Örn: YÖK, ÖSYM, AkademikKapital">
-          </div>
-
-          <div class="form-group">
-            <label for="itemSummary">Özet</label>
-            <textarea id="itemSummary" rows="3" placeholder="Kısa özet yazınız"></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="itemContent">Detaylı İçerik</label>
-            <textarea id="itemContent" rows="7" placeholder="Ana metin içeriğini giriniz"></textarea>
-          </div>
-
-          <!-- Öncelik 2: Dosya Yükleme Kaldırıldı -> Doküman Adı + İndirme Bağlantısı (URL) -->
-          <fieldset class="doc-fieldset">
-            <legend>Doküman Bilgileri (Dosya Yükleme Yerine Bağlantı)</legend>
-            <div class="form-group">
-              <label for="docName">Doküman Adı</label>
-              <input type="text" id="docName" placeholder="Örn: 2026 YÖK Yükseköğretim İstatistikleri (PDF)">
+          <div class="two-col">
+            <div class="field-group">
+              <label for="admAuthor">Yazar</label>
+              <input type="text" id="admAuthor" required>
             </div>
-            <div class="form-group">
-              <label for="docUrl">İndirme Bağlantısı (URL)</label>
-              <input type="url" id="docUrl" placeholder="https://...">
+            <div class="field-group">
+              <label for="admSource">Kaynak</label>
+              <input type="text" id="admSource" required>
             </div>
-          </fieldset>
-
-          <div class="form-group">
-            <label for="itemImage">Paylaşım / Kapak Görseli URL</label>
-            <input type="url" id="itemImage" placeholder="https://.../gorsel.jpg">
           </div>
-
-          <div class="form-checkbox-group">
-            <label><input type="checkbox" id="itemFeatured"> Öne Çıkarılan İçerik</label>
-            <label><input type="checkbox" id="itemPinned"> Başa Tuttur</label>
+          <div class="two-col">
+            <div class="field-group">
+              <label for="admDate">Yayın Tarihi</label>
+              <input type="date" id="admDate" required>
+            </div>
+            <div class="field-group">
+              <label for="admTopic">Konu Etiketi</label>
+              <input type="text" id="admTopic" placeholder="Örn: YÖK, ÖSYM, Finansman">
+            </div>
           </div>
-
-          <div class="form-actions">
-            <button type="submit" id="saveContentBtn" class="btn btn-primary">Kaydet ve Yayınla</button>
-            <button type="button" id="cancelEditBtn" class="btn btn-secondary hidden">Vazgeç</button>
+          <div class="two-col">
+            <div class="field-group">
+              <label for="admDocMeta">Doküman Türü / Boyutu</label>
+              <input type="text" id="admDocMeta" placeholder="Örn: PDF • 2.4 MB">
+            </div>
+            <div class="field-group">
+              <label for="admSourceUrl">Resmî Kaynak / Bağlantı URL</label>
+              <input type="url" id="admSourceUrl" placeholder="https://...">
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="admSummary">Kısa Özet (En fazla 2 satır)</label>
+            <textarea id="admSummary" rows="2" required></textarea>
+          </div>
+          <div class="field-group">
+            <label for="admBody">Detay Metni</label>
+            <textarea id="admBody" rows="5" required></textarea>
+          </div>
+          <label class="consent-check dark-check">
+            <input type="checkbox" id="admFeatured">
+            <span>Bu kaydı en üstte tek "Öne Çıkan" içerik olarak göster</span>
+          </label>
+          <div class="dialog-footer">
+            <button type="button" id="exportJsonBtn" class="btn-secondary">JSON İndir</button>
+            <button type="submit" class="btn-primary">Arşive Kaydet</button>
           </div>
         </form>
       </div>
-
-      <!-- Sekme 3: Ayarlar & Yedek -->
-      <div id="adminTabSettings" class="tab-panel">
-        <h3>Yedekleme ve Veri Yönetimi</h3>
-        <div class="settings-section">
-          <p>Arşiv kayıtlarını JSON olarak dışa aktarabilir veya yedekten geri yükleyebilirsiniz.</p>
-          <div class="button-group">
-            <button type="button" id="exportDataBtn" class="btn btn-secondary">JSON Dışa Aktar</button>
-            <label for="importJsonInput" class="btn btn-secondary">JSON İçe Aktar</label>
-            <input type="file" id="importJsonInput" accept="application/json,.json" class="hidden">
-          </div>
-        </div>
-        <div class="settings-section">
-          <button type="button" id="logoutAdminBtn" class="btn btn-danger">Yönetici Oturumunu Kapat</button>
-        </div>
-      </div>
     </div>
   </dialog>
+
+  <!-- Canlı Bildirim (Toast) -->
+  <div id="liveToast" class="live-toast" role="status" aria-live="polite"></div>
 
   <script src="script.js" defer></script>
 </body>
