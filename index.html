@@ -92,3 +92,488 @@
       </nav>
     </div>
   </header>
+
+  <!-- Normal Akışta Kayan Sekme Çubuğu -->
+  <nav class="section-nav-wrap" aria-label="Arşiv bölümleri">
+    <div id="sectionTabs" class="section-tabs" role="tablist">
+      <button type="button" class="tab-item active" role="tab" aria-selected="true" aria-current="page" data-tab="tumu">Tümü</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="makale">Makale</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="haberler">Haberler</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="duyurular">Duyurular</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="dokuman">Doküman Arşivi</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="baglanti">Dış Bağlantılar</button>
+      <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab="hakkimizda">Hakkımızda</button>
+    </div>
+  </nav>
+
+  <!-- Ana İçerik -->
+  <main id="mainContent" class="main-container" tabindex="-1">
+    <!-- ARŞİV GÖRÜNÜMÜ -->
+    <section id="archiveView" aria-labelledby="pageMainHeading">
+      <!-- Arama ve Yalnızca Yeniden Eskiye / Eskiden Yeniye Sıralama -->
+      <div class="toolbar">
+        <div class="search-field-wrap">
+          <label for="searchInput" class="sr-only">Arşivde arama yapın (/ kısayolu)</label>
+          <input
+            type="search"
+            id="searchInput"
+            class="search-input"
+            placeholder="Arşivde başlık, yazar veya içerik ara..."
+            autocomplete="off"
+          >
+          <span class="shortcut-hint" aria-hidden="true">/</span>
+        </div>
+
+        <div class="sort-field-wrap">
+          <label for="sortSelect" class="sr-only">Sırala</label>
+          <select id="sortSelect" class="sort-select">
+            <option value="newest">Yeniden Eskiye</option>
+            <option value="oldest">Eskiden Yeniye</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Ek Filtreler: Yalnızca Yıl ve Konu Etiketi -->
+      <div class="secondary-filters" aria-label="Yıl ve konu etiketi filtreleri">
+        <div class="filter-control">
+          <label for="yearFilter">Yıl</label>
+          <select id="yearFilter" class="filter-select">
+            <option value="ALL">Tüm Yıllar</option>
+          </select>
+        </div>
+        <div class="filter-control">
+          <label for="topicFilter">Konu Etiketi</label>
+          <select id="topicFilter" class="filter-select">
+            <option value="ALL">Tüm Konular</option>
+          </select>
+        </div>
+        <button type="button" id="resetFiltersBtn" class="btn-ghost hidden">Filtreleri temizle</button>
+      </div>
+
+      <!-- Tek H1 Sayfa Başlığı ve Durum Özeti -->
+      <div class="archive-heading-row">
+        <div>
+          <h1 id="pageMainHeading" class="page-h1">Yükseköğretim Arşivi</h1>
+          <p id="activeViewNote" class="view-subtitle">Resmi kararlar, analizler, veriler ve birincil kaynak bağlantıları tek yerde.</p>
+        </div>
+        <span id="resultCount" class="result-count" aria-live="polite">0 kayıt</span>
+      </div>
+
+      <!-- Yükleniyor / Hata / Boş Durum Alanları -->
+      <div id="statusBanner" class="status-banner hidden" role="status" aria-live="polite"></div>
+
+      <!-- Tek Öne Çıkan İçerik Alanı -->
+      <section id="featuredSection" class="featured-section hidden" aria-label="Öne çıkan içerik">
+        <div class="section-eyebrow-row">
+          <span class="featured-tag">ÖNE ÇIKAN</span>
+          <span class="editorial-rule-note">Kaynaklı ve tarihli yayın</span>
+        </div>
+        <div id="featuredCardSlot"></div>
+      </section>
+
+      <!-- Liste Alanı -->
+      <section aria-label="Arşiv kayıtları listesi">
+        <div id="archiveList" class="archive-list"></div>
+        <div class="load-more-wrap">
+          <button type="button" id="loadMoreBtn" class="btn-secondary hidden">Daha fazla göster</button>
+        </div>
+      </section>
+
+      <!-- Lacivert Haftalık Bülten Bölümü -->
+      <section id="newsletterSection" class="newsletter-section" aria-labelledby="newsletterHeading">
+        <div class="newsletter-inner">
+          <div class="newsletter-copy">
+            <span class="newsletter-eyebrow">HAFTALIK BÜLTEN</span>
+            <h2 id="newsletterHeading">Haftalık Yükseköğretim Özeti</h2>
+            <p id="newsletterDigestPreview">Editörün seçtiği haftalık yükseköğretim gelişmeleri, rapor özetleri ve duyurular e-postanıza gelir. Her iletide tek tıkla abonelikten çıkabilirsiniz.</p>
+            <p class="newsletter-legal">
+              <a href="#hakkimizda-kvkk" id="kvkkOpenLink">KVKK Aydınlatma Metni</a> kapsamında çift onay (double opt-in) ile kayıt alınır.
+            </p>
+          </div>
+
+          <form id="newsletterForm" class="newsletter-form" novalidate>
+            <!-- Honeypot (spam bot tuzak alanı) -->
+            <div class="hp-field" aria-hidden="true">
+              <label for="newsletterCompany">Kurum</label>
+              <input type="text" id="newsletterCompany" name="company" tabindex="-1" autocomplete="off">
+            </div>
+
+            <div class="newsletter-row">
+              <label for="newsletterEmail" class="sr-only">E-posta adresiniz</label>
+              <input type="email" id="newsletterEmail" class="newsletter-input" placeholder="E-posta adresiniz" required>
+              <button type="submit" id="newsletterSubmit" class="btn-primary">Abone Ol</button>
+            </div>
+
+            <label class="consent-check">
+              <input type="checkbox" id="newsletterConsent" required>
+              <span>Haftalık özet bülteninin gönderilmesi için açık rıza veriyorum ve KVKK aydınlatma metnini okudum.</span>
+            </label>
+
+            <div id="newsletterMessage" class="form-feedback" role="status" aria-live="polite"></div>
+            <div id="doubleOptInBox" class="double-optin-box hidden">
+              <p><strong>Çift Onay Bekleniyor:</strong> Aboneliğinizi tamamlamak için aşağıdaki onay adımını doğrulayın.</p>
+              <button type="button" id="confirmDoubleOptInBtn" class="btn-accent-outline">Aboneliğimi Onayla</button>
+              <button type="button" id="unsubscribeDemoBtn" class="btn-ghost-light">Tek tıkla çıkış yap</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Bülten Sonrası Sade Katkı Kartı -->
+      <section id="contributeSection" class="contribute-card" aria-labelledby="contributeHeading">
+        <div>
+          <h2 id="contributeHeading">Arşive Katkıda Bulunun</h2>
+          <p>Yükseköğretim politikaları, kurum verileri veya açık erişimli çalışmalar için öneri gönderebilirsiniz.</p>
+        </div>
+        <button type="button" id="openContributeBtn" class="btn-primary">İçerik Gönder</button>
+      </section>
+    </section>
+
+    <!-- AYRI SAYFA GÖRÜNÜMÜ: HAKKIMIZDA -->
+    <section id="aboutView" class="about-view hidden" aria-labelledby="aboutHeading">
+      <div class="about-topbar">
+        <button type="button" id="backToArchiveBtn" class="btn-secondary">&larr; Arşive Dön</button>
+      </div>
+
+      <article class="prose-column">
+        <h1 id="aboutHeading" class="page-h1">Hakkımızda</h1>
+        <p class="prose-lead">AkademikKapital; yükseköğretim gündemini izleyen, analiz ve rapor yayımlayan, akademisyenlerin, araştırmacıların ve politika izleyicilerinin düzenli uğradığı bağımsız bir açık erişim yayın ve veri arşividir.</p>
+
+        <h2>Bağımsızlık Beyanı</h2>
+        <p>AkademikKapital herhangi bir kurumun, siyasi yapının veya ticari çıkar grubunun yayın organı değildir. Yayın seçkisi ve editoryal öncelikler kamusal bilgiye erişim, doğruluk ve akademik ölçütler temelinde belirlenir.</p>
+
+        <h2>Editoryal İlkeler ve Reklam Politikası</h2>
+        <ul>
+          <li><strong>Kaynak ve Tarih Zorunluluğu:</strong> Her kayıtta kaynak adı ve yayın tarihi açıkça yer alır.</li>
+          <li><strong>Birincil Kaynak ve Telif Hassasiyeti:</strong> Resmi belge ve düzenlemelerde birincil kaynağa bağlantı verilir; telifli metinlerin tamamı kopyalanmaz, özet ve bağlantı paylaşılır.</li>
+          <li><strong>Haber ile Analiz/Görüş Ayrımı:</strong> Güncel olgu ve duyurular <em>Haber / Duyuru</em> olarak, yorum ve değerlendirme içeren metinler <em>Analiz / Görüş</em> olarak ayrı etiketlenir.</li>
+          <li><strong>Reklam ve Sponsorluk:</strong> Sitede açılır pencere (pop-up) yoktur; ileride yer alabilecek reklam ve sponsorlu duyurular editoryal içerikten açıkça ayrıştırılır.</li>
+        </ul>
+
+        <h2>Düzeltme Politikası</h2>
+        <p>Yayımlanan bir içerikte maddi hata, veri yanlışlığı veya eksik bağlam tespit edildiğinde kanıtıyla birlikte yapılan başvurular incelenir; gerekli düzeltme kayıt altında güncellenir ve son güncelleme tarihi görünür biçimde kaydedilir.</p>
+
+        <h2 id="hakkimizda-kvkk">Gizlilik ve KVKK Aydınlatma</h2>
+        <p>Sitede kişiye özel profilleyen izleme çerezi bulunmaz; gizlilik odaklı temel ölçüm yapılandırması kullanılır. Bülten formuna girilen e-posta adresleri yalnızca haftalık özet bülteni gönderimi amacıyla işlenir ve sadece editör erişimine açık bülten bölümünde yönetilir.</p>
+
+        <h2>İletişim</h2>
+        <p>Editoryal başvurular, düzeltme bildirimleri ve kurumsal iletişim için resmî adresimiz:</p>
+        <div class="contact-box">
+          <span id="contactEmailText" class="contact-email">akademikkapital@gmail.com</span>
+          <button type="button" id="copyEmailBtn" class="btn-secondary">Kopyala</button>
+          <button type="button" id="toggleContactFormBtn" class="btn-primary">Kısa Mesaj Gönder</button>
+        </div>
+
+        <form id="quickContactForm" class="quick-contact-form hidden" novalidate>
+          <div class="field-group">
+            <label for="contactName">Ad Soyad</label>
+            <input type="text" id="contactName" required>
+          </div>
+          <div class="field-group">
+            <label for="contactMessage">Mesajınız</label>
+            <textarea id="contactMessage" rows="3" required></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Mesajı Hazırla</button>
+          <p id="quickContactStatus" class="form-feedback" role="status" aria-live="polite"></p>
+        </form>
+      </article>
+    </section>
+
+    <!-- TEK SÜTUN DETAY GÖRÜNÜMÜ (65-75 KARAKTER OKUMA GENİŞLİĞİ) -->
+    <section id="detailView" class="detail-view hidden" aria-labelledby="detailTitle">
+      <div class="detail-nav-bar">
+        <button type="button" id="detailBackBtn" class="btn-secondary">&larr; Listeye Dön</button>
+        <div class="detail-actions">
+          <button type="button" id="printDetailBtn" class="btn-ghost">Yazdır</button>
+          <button type="button" id="shareDetailBtn" class="btn-ghost">Paylaş</button>
+          <button type="button" id="copyApaBtn" class="btn-primary">Künyeyi kopyala (APA)</button>
+        </div>
+      </div>
+
+      <article id="detailArticle" class="reading-column" itemscope itemtype="https://schema.org/Article">
+        <header class="detail-header">
+          <div class="detail-badges">
+            <span id="detailTypeBadge" class="type-badge"></span>
+            <span id="detailGenreBadge" class="genre-badge"></span>
+          </div>
+          <h1 id="detailTitle" class="detail-title" itemprop="headline"></h1>
+          <div class="detail-meta">
+            <span>Yazar: <strong id="detailAuthor" itemprop="author"></strong></span>
+            <span>Kaynak: <strong id="detailSource"></strong></span>
+            <span>Yayın: <time id="detailDate" itemprop="datePublished"></time></span>
+            <span>Son güncelleme: <time id="detailUpdated" itemprop="dateModified"></time></span>
+            <span id="detailReadTime"></span>
+          </div>
+          <div class="permalink-row">
+            <span>Kalıcı URL:</span>
+            <code id="detailPermalink"></code>
+            <button type="button" id="copyPermalinkBtn" class="btn-ghost">Kopyala</button>
+          </div>
+        </header>
+
+        <div id="detailBody" class="detail-body" itemprop="articleBody"></div>
+
+        <div id="detailPrimaryLinkBox" class="primary-source-box hidden">
+          <span>Birincil Kaynak / Resmi Belge:</span>
+          <a id="detailPrimaryLink" href="#" target="_blank" rel="noopener noreferrer"></a>
+        </div>
+
+        <footer class="detail-apa-box">
+          <h2>Önerilen APA Künyesi</h2>
+          <p id="detailApaText" class="apa-text"></p>
+        </footer>
+      </article>
+    </section>
+  </main>
+
+  <!-- Ortalanmış Lacivert Alt Bilgi (Zemin Lacivert, Yazı Beyaz) -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <p class="footer-slogan">Akademinin hafızası, yükseköğretimin pusulası</p>
+      <p class="footer-desc">Bağımsız yükseköğretim yayın ve veri arşivi.</p>
+
+      <nav class="footer-social" aria-label="Alt bilgi sosyal bağlantıları">
+        <a href="https://whatsapp.com/channel/0029Vb6" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp">
+          <svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M20.52 3.48A11.82 11.82 0 0 0 12.06 0C5.49 0 .14 5.35.14 11.92c0 2.1.55 4.15 1.6 5.96L0 24l6.29-1.65a11.88 11.88 0 0 0 5.77 1.47h.01c6.57 0 11.92-5.35 11.92-11.92 0-3.18-1.24-6.18-3.47-8.42zm-8.45 18.33h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.73.98 1-3.64-.24-.37a9.85 9.85 0 0 1-1.51-5.23c0-5.45 4.44-9.89 9.9-9.89 2.64 0 5.12 1.03 6.99 2.9a9.83 9.83 0 0 1 2.89 7c0 5.45-4.44 9.89-9.9 9.89zm5.42-7.41c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.49s1.07 2.89 1.22 3.09c.15.2 2.11 3.22 5.11 4.52.71.31 1.27.49 1.7.63.72.23 1.37.2 1.89.12.58-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z"/>
+          </svg>
+        </a>
+        <a href="https://t.me/akademikkapital" target="_blank" rel="noopener noreferrer" aria-label="Telegram" title="Telegram">
+          <svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M23.91 3.79L20.3 20.84c-.25 1.21-.98 1.5-2 .94l-5.5-4.07-2.66 2.57c-.3.3-.55.55-1.12.55l.4-5.64 10.28-9.28c.45-.4-.1-.62-.69-.22L6.52 13.32 1.05 11.61c-1.19-.37-1.21-1.19.25-1.76L22.39 1.59c.99-.37 1.86.22 1.52 2.2z"/>
+          </svg>
+        </a>
+        <a href="https://instagram.com/akademikkapital" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram">
+          <svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23a3.72 3.72 0 0 1-.9 1.38 3.72 3.72 0 0 1-1.38.9c-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16zM12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63a5.88 5.88 0 0 0-2.12 1.38A5.88 5.88 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.39 2.12.66.67 1.33 1.08 2.12 1.39.76.3 1.64.5 2.91.56 1.28.06 1.69.07 4.95.07s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56.79-.31 1.46-.72 2.12-1.39.67-.66 1.08-1.33 1.39-2.12.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.88 5.88 0 0 0-1.39-2.12A5.88 5.88 0 0 0 19.86.63c-.76-.3-1.64-.5-2.91-.56C15.67.01 15.26 0 12 0zm0 5.84A6.16 6.16 0 1 0 18.16 12 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 16 12a4 4 0 0 1-4 4zm6.41-11.85a1.44 1.44 0 1 0 1.44 1.44 1.44 1.44 0 0 0-1.44-1.44z"/>
+          </svg>
+        </a>
+        <a href="https://youtube.com/@akademikkapital" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube">
+          <svg class="social-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.12-2.12C19.5 3.57 12 3.57 12 3.57s-7.5 0-9.38.51A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.12 2.12c1.88.51 9.38.51 9.38.51s7.5 0 9.38-.51a3 3 0 0 0 2.12-2.12A31.3 31.3 0 0 0 24 12a31.3 31.3 0 0 0-.5-5.8zM9.6 15.6V8.4l6.24 3.6-6.24 3.6z"/>
+          </svg>
+        </a>
+        <a href="feed.xml" id="rssFollowLink" class="rss-link">RSS ile takip et</a>
+      </nav>
+
+      <div class="footer-contact-line">
+        <span>İletişim: akademikkapital@gmail.com</span>
+        <button type="button" id="footerCopyEmailBtn" class="btn-inline-copy">Kopyala</button>
+        <span aria-hidden="true">•</span>
+        <button type="button" id="footerAdminLink" class="footer-text-link">Yönetim Paneli</button>
+      </div>
+
+      <p class="footer-copy">&copy; 2026 AkademikKapital. Tüm hakları saklıdır.</p>
+    </div>
+  </footer>
+
+  <!-- DİYALOG: İçerik Gönder (Editör Onay Kuyruğuna Düşer) -->
+  <dialog id="contributeDialog" class="dialog-box" aria-labelledby="contributeDialogTitle">
+    <div class="dialog-panel">
+      <div class="dialog-head">
+        <h2 id="contributeDialogTitle">İçerik Gönder</h2>
+        <button type="button" class="dialog-close" data-close-dialog="contributeDialog" aria-label="Pencereyi kapat">&times;</button>
+      </div>
+
+      <form id="contributeForm" class="stack-form" novalidate>
+        <p class="dialog-note">Gönderdiğiniz kayıt doğrudan yayımlanmaz; editoryal doğrulama ve onay sürecinden sonra arşive eklenir.</p>
+
+        <div class="field-group">
+          <label for="subName">Ad Soyad *</label>
+          <input type="text" id="subName" required>
+        </div>
+
+        <div class="field-group">
+          <label for="subInstitution">Kurum / Üniversite *</label>
+          <input type="text" id="subInstitution" required>
+        </div>
+
+        <div class="field-group">
+          <label for="subEmail">E-posta *</label>
+          <input type="email" id="subEmail" required>
+        </div>
+
+        <div class="field-group">
+          <label for="subType">Tür *</label>
+          <select id="subType" required>
+            <option value="makale">Makale</option>
+            <option value="haberler">Haberler</option>
+            <option value="duyurular">Duyurular</option>
+            <option value="dokuman">Doküman Arşivi</option>
+            <option value="baglanti">Dış Bağlantılar</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="subTitle">Başlık *</label>
+          <input type="text" id="subTitle" required>
+        </div>
+
+        <div class="field-group">
+          <label for="subTextOrUrl">Özet / Metin veya Resmi Bağlantı (URL) *</label>
+          <textarea id="subTextOrUrl" rows="4" required placeholder="Kısa özet/metin veya birincil kaynak bağlantısını yazın..."></textarea>
+        </div>
+
+        <div class="field-group">
+          <label for="subSourceNote">Kaynak Beyanı ve Yayın Tarihi *</label>
+          <input type="text" id="subSourceNote" required placeholder="Örn: YÖK Resmî Duyurusu, 2026-11-20">
+        </div>
+
+        <label class="consent-check dark-check">
+          <input type="checkbox" id="subConfirm" required>
+          <span>Kaynak beyanımın doğru olduğunu, telif haklarına saygı gösterdiğimi ve editör onay sürecini kabul ediyorum.</span>
+        </label>
+
+        <div id="contributeError" class="form-feedback" role="alert"></div>
+
+        <div class="dialog-footer">
+          <button type="button" class="btn-secondary" data-close-dialog="contributeDialog">Vazgeç</button>
+          <button type="submit" class="btn-primary">Onaya Gönder</button>
+        </div>
+      </form>
+
+      <div id="contributeSuccessScreen" class="submission-receipt hidden">
+        <h3>Gönderiminiz Editör Onayına Alındı</h3>
+        <p id="receiptSummaryText"></p>
+        <button type="button" id="closeReceiptBtn" class="btn-primary">Tamam</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- DİYALOG: Yönetim Paneli (Editör Bülten Seçkisi, Bülten Aboneleri, Onay Kuyruğu ve Kayıt) -->
+  <dialog id="adminDialog" class="dialog-box" aria-labelledby="adminDialogTitle">
+    <div class="dialog-panel dialog-wide">
+      <div class="dialog-head">
+        <h2 id="adminDialogTitle">Yönetim Paneli</h2>
+        <button type="button" class="dialog-close" data-close-dialog="adminDialog" aria-label="Pencereyi kapat">&times;</button>
+      </div>
+
+      <div id="adminGate" class="stack-form">
+        <p class="dialog-note">Yönetici parolası ile giriş yapın (örnek parola: <code>akademik2026</code>).</p>
+        <div class="field-group">
+          <label for="adminPassInput">Yönetici Parolası</label>
+          <input type="password" id="adminPassInput" autocomplete="current-password">
+        </div>
+        <div class="dialog-footer">
+          <button type="button" id="adminLoginSubmit" class="btn-primary">Giriş</button>
+        </div>
+      </div>
+
+      <div id="adminConsole" class="hidden">
+        <!-- Editör: Haftalık Bülten Seçkisi Hazırlama -->
+        <section class="admin-block" aria-labelledby="digestEditorHeading">
+          <h3 id="digestEditorHeading">Haftalık Bülten Seçkisi Hazırla</h3>
+          <form id="digestSelectionForm" class="stack-form">
+            <div class="field-group">
+              <label for="digestHeadline">Haftalık Seçki Başlığı / Özeti</label>
+              <input type="text" id="digestHeadline" placeholder="Örn: Bu Hafta: YÖK kontenjan kararları, yeni raporlar ve duyurular">
+            </div>
+            <div class="field-group">
+              <label>Bültene Dahil Edilecek Arşiv İçerikleri</label>
+              <div id="digestChecklist" class="digest-checklist"></div>
+            </div>
+            <div class="dialog-footer">
+              <button type="submit" class="btn-primary">Bülten Seçkisini Kaydet</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Editör: Sadece Editörün Göreceği Bülten Aboneleri -->
+        <section class="admin-block" aria-labelledby="subscribersHeading">
+          <h3 id="subscribersHeading">Bülten Aboneleri (Yalnızca Editör Görünümü)</h3>
+          <p class="dialog-note">Kayıt olan kullanıcıların e-posta adresleri yalnızca bu editör alanında listelenir.</p>
+          <div id="subscriberListBox" class="subscriber-list-box"></div>
+        </section>
+
+        <!-- Editör: Onay Kuyruğu -->
+        <section class="admin-block" aria-labelledby="pendingHeading">
+          <h3 id="pendingHeading">Editör Onayı Bekleyen Gönderimler</h3>
+          <div id="pendingQueueList" class="pending-queue"></div>
+        </section>
+
+        <!-- Editör: Yeni Arşiv Kaydı Ekle -->
+        <section class="admin-block" aria-labelledby="newRecordHeading">
+          <h3 id="newRecordHeading">Yeni Arşiv Kaydı Ekle</h3>
+          <form id="adminRecordForm" class="stack-form">
+            <div class="field-group">
+              <label for="admTitle">Başlık *</label>
+              <input type="text" id="admTitle" required>
+            </div>
+            <div class="two-col">
+              <div class="field-group">
+                <label for="admCategory">Tür</label>
+                <select id="admCategory">
+                  <option value="makale">Makale</option>
+                  <option value="haberler">Haberler</option>
+                  <option value="duyurular">Duyurular</option>
+                  <option value="dokuman">Doküman Arşivi</option>
+                  <option value="baglanti">Dış Bağlantılar</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label for="admGenre">Yayın Niteliği</label>
+                <select id="admGenre">
+                  <option value="Haber / Duyuru">Haber / Duyuru</option>
+                  <option value="Analiz / Görüş">Analiz / Görüş</option>
+                  <option value="Resmî Belge">Resmî Belge</option>
+                </select>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="field-group">
+                <label for="admAuthor">Yazar</label>
+                <input type="text" id="admAuthor" required>
+              </div>
+              <div class="field-group">
+                <label for="admSource">Kaynak</label>
+                <input type="text" id="admSource" required>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="field-group">
+                <label for="admDate">Yayın Tarihi</label>
+                <input type="date" id="admDate" required>
+              </div>
+              <div class="field-group">
+                <label for="admTopic">Konu Etiketi</label>
+                <input type="text" id="admTopic" placeholder="Örn: YÖK, ÖSYM, Finansman">
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="field-group">
+                <label for="admDocMeta">Doküman Türü / Boyutu</label>
+                <input type="text" id="admDocMeta" placeholder="Örn: PDF • 2.4 MB">
+              </div>
+              <div class="field-group">
+                <label for="admSourceUrl">Resmî Kaynak / Bağlantı URL</label>
+                <input type="url" id="admSourceUrl" placeholder="https://...">
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="admSummary">Kısa Özet (En fazla 2 satır)</label>
+              <textarea id="admSummary" rows="2" required></textarea>
+            </div>
+            <div class="field-group">
+              <label for="admBody">Detay Metni</label>
+              <textarea id="admBody" rows="5" required></textarea>
+            </div>
+            <label class="consent-check dark-check">
+              <input type="checkbox" id="admFeatured">
+              <span>Bu kaydı en üstte tek "Öne Çıkan" içerik olarak göster</span>
+            </label>
+            <div class="dialog-footer">
+              <button type="button" id="exportJsonBtn" class="btn-secondary">JSON İndir</button>
+              <button type="submit" class="btn-primary">Arşive Kaydet</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Canlı Bildirim (Toast) -->
+  <div id="liveToast" class="live-toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
