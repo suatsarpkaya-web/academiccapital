@@ -10,10 +10,10 @@
   --bg-subtle: #ECE6D5;
   --navy: #142642;
   --navy-hover: #1E3861;
-  --red: #9E3328;         /* Krem zemin üzerinde >= 5.6:1 kontrast (WCAG AA) */
+  --red: #9E3328;
   --red-hover: #7E261D;
   --text-primary: #142642;
-  --text-secondary: #485466; /* >= 6.8:1 kontrast */
+  --text-secondary: #485466;
   --border: #D4CCB8;
   --focus-ring: #9E3328;
 
@@ -53,7 +53,6 @@ body {
   padding-bottom: var(--safe-bottom);
 }
 
-/* Erişilebilirlik: Odak Halkası ve Azaltılmış Hareket */
 :focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
@@ -98,7 +97,7 @@ body {
 }
 
 /* ==========================================================================
-   1. İnce Sabit Üst Çubuk (En Çok 64 px)
+   1. İnce Sabit Üst Çubuk (En Çok 64 px) & İkonlu Sosyal Bağlantılar
    ========================================================================== */
 .top-bar {
   position: -webkit-sticky;
@@ -176,24 +175,28 @@ body {
 .top-social {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .top-social a {
   color: var(--navy);
   text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0 8px;
-  min-height: 44px;
+  width: 40px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   border-radius: 6px;
 }
 
 .top-social a:hover {
   color: var(--red);
   background-color: var(--bg-subtle);
+}
+
+.social-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
 /* ==========================================================================
@@ -252,7 +255,7 @@ body {
 
 .toolbar {
   display: grid;
-  grid-template-columns: 1fr 200px;
+  grid-template-columns: 1fr 190px;
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -270,7 +273,7 @@ body {
   width: 100%;
   min-height: 44px;
   font-family: var(--font-sans);
-  font-size: 1rem; /* >= 17px */
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--text-primary);
   background-color: var(--bg-card);
@@ -324,7 +327,6 @@ body {
   font-size: 0.95rem;
 }
 
-/* Arama Vurgulama */
 mark.search-hit {
   background-color: #F8D8C8;
   color: var(--navy);
@@ -332,7 +334,6 @@ mark.search-hit {
   border-radius: 2px;
 }
 
-/* Sayfa Başlığı */
 .archive-heading-row {
   display: flex;
   justify-content: space-between;
@@ -375,7 +376,7 @@ mark.search-hit {
 }
 
 /* ==========================================================================
-   Tek Öne Çıkan İçerik ve Liste Kartları
+   Öne Çıkan ve Liste Kartları
    ========================================================================== */
 .featured-section {
   margin-bottom: 28px;
@@ -541,7 +542,7 @@ mark.search-hit {
 }
 
 /* ==========================================================================
-   Düğmeler (Lacivert Birincil, Sade İkincil, Kırmızı Vurgu)
+   Düğmeler
    ========================================================================== */
 .btn-primary {
   background-color: var(--navy);
@@ -610,19 +611,8 @@ mark.search-hit {
 }
 
 /* ==========================================================================
-   Editoryal Şerit, Lacivert Bülten ve Katkı Kartı
+   Lacivert Haftalık Bülten & Bülten Sonrası Sade Katkı Alanı
    ========================================================================== */
-.editorial-bar {
-  margin-top: 28px;
-  padding: 16px 18px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--navy);
-  border-radius: 6px;
-  font-size: 0.92rem;
-  color: var(--text-secondary);
-}
-
 .newsletter-section {
   margin-top: 32px;
   background-color: var(--navy);
@@ -751,11 +741,500 @@ mark.search-hit {
 }
 
 .contribute-card {
-  margin-top: 24px;
+  margin-top: 20px;
   background-color: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 24px;
+  border-radius: 8px;
+  padding: 20px 24px;
   display: flex;
   align-items: center;
-  justify
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.contribute-card h2 {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+
+.contribute-card p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* ==========================================================================
+   Hakkımızda ve Tek Sütun Detay Görünümü
+   ========================================================================== */
+.about-topbar,
+.detail-nav-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prose-column,
+.reading-column {
+  max-width: 68ch;
+  margin: 0 auto;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 28px 24px;
+}
+
+.prose-column h2 {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  color: var(--navy);
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+.prose-column p,
+.prose-column ul {
+  margin-bottom: 14px;
+}
+
+.prose-column ul {
+  padding-left: 22px;
+}
+
+.contact-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background-color: var(--bg-cream);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+
+.contact-email {
+  font-weight: 700;
+  color: var(--navy);
+  text-decoration: none;
+}
+
+.quick-contact-form {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: var(--bg-cream);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.detail-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.45rem, 2.8vw, 1.9rem);
+  color: var(--navy);
+  margin: 10px 0;
+  line-height: 1.3;
+}
+
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.permalink-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  background-color: var(--bg-cream);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.permalink-row code {
+  word-break: break-all;
+  color: var(--navy);
+}
+
+.detail-body {
+  margin-top: 20px;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.detail-body p {
+  margin-bottom: 16px;
+}
+
+.primary-source-box {
+  margin-top: 20px;
+  padding: 14px;
+  background-color: var(--bg-cream);
+  border-left: 4px solid var(--red);
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.primary-source-box a {
+  color: var(--red);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.primary-source-box a:hover {
+  text-decoration: underline;
+}
+
+.detail-apa-box {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.detail-apa-box h2 {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+}
+
+.apa-text {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Ortalanmış Lacivert Alt Bilgi (Zemin Lacivert, Yazı Beyaz)
+   ========================================================================== */
+.site-footer {
+  margin-top: auto;
+  background-color: var(--navy);
+  color: #FFFFFF;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.footer-inner {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer-slogan {
+  font-style: italic;
+  font-weight: 600;
+  color: #F5B7B1;
+}
+
+.footer-desc,
+.footer-copy {
+  font-size: 0.92rem;
+  color: #FFFFFF;
+}
+
+.footer-social {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 4px 0;
+}
+
+.footer-social a {
+  color: #FFFFFF;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  min-height: 40px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.footer-social a:hover,
+.footer-social a.rss-link {
+  color: #F5B7B1;
+}
+
+.footer-contact-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #FFFFFF;
+}
+
+.btn-inline-copy {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 4px;
+  color: #FFFFFF;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.btn-inline-copy:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.footer-text-link {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.footer-text-link:hover {
+  color: #FFFFFF;
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Diyaloglar, Editör Bülten Seçkisi & Abone Listesi
+   ========================================================================== */
+dialog.dialog-box {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: auto;
+  max-width: 95vw;
+  width: 580px;
+}
+
+dialog.dialog-box::backdrop {
+  background-color: rgba(20, 38, 66, 0.65);
+}
+
+.dialog-wide {
+  width: 780px;
+}
+
+.dialog-panel {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  max-height: 86dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dialog-close {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-cream);
+  color: var(--navy);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.admin-block {
+  padding-bottom: 20px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-block h3 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--navy);
+  margin-bottom: 10px;
+}
+
+.digest-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--bg-cream);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.subscriber-list-box {
+  background: var(--bg-cream);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 0.92rem;
+}
+
+.subscriber-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subscriber-row:last-child {
+  border-bottom: none;
+}
+
+.stack-form .field-group {
+  margin-bottom: 14px;
+}
+
+.stack-form label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.pending-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pending-item {
+  background: var(--bg-cream);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.live-toast {
+  position: fixed;
+  bottom: calc(20px + var(--safe-bottom));
+  right: 20px;
+  z-index: 600;
+  background-color: var(--navy);
+  color: #FFFFFF;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.live-toast.visible {
+  opacity: 1;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ==========================================================================
+   Mobil Öncelikli (360 px+) ve Yazdırma Stilleri
+   ========================================================================== */
+@media (max-width: 768px) {
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .archive-heading-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .newsletter-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .newsletter-row {
+    flex-direction: column;
+  }
+
+  .contribute-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .prose-column,
+  .reading-column {
+    padding: 20px 16px;
+  }
+}
+
+@media print {
+  .top-bar,
+  .section-nav-wrap,
+  .detail-nav-bar,
+  .site-footer,
+  .live-toast {
+    display: none !important;
+  }
+
+  body,
+  .reading-column {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    border: none !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}
